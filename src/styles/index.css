@@ -1,0 +1,37 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    :root {
+        --background: 240 10% 3.9%;
+        --foreground: 0 0% 98%;
+
+        --surface: 240 10% 8%;
+        /* Slightly lighter than bg */
+        --surface-highlight: 240 5% 15%;
+        /* Panel background */
+
+        --accent: 263 70% 50%;
+        /* Deep Purple */
+        --accent-foreground: 210 40% 98%;
+
+        --destructive: 0 62.8% 30.6%;
+        --destructive-foreground: 210 40% 98%;
+
+        --muted: 240 3.7% 15.9%;
+        --muted-foreground: 240 5% 64.9%;
+
+        --border: 240 3.7% 15.9%;
+        --radius: 0.5rem;
+    }
+}
+
+body {
+    @apply bg-background text-foreground antialiased;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    /* Prevent scrollbars in full screen app */
+    font-family: 'Inter', system-ui, sans-serif;
+}
