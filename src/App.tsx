@@ -1,18 +1,23 @@
 import React from "react";
 import { CanvasProvider } from "./canvas/CanvasProvider";
 import { Options } from "./options/Options";
+import { GraphProvider } from "./context/GraphContext";
 import "./styles/globals.css";
 
 const App: React.FC = () => (
-  <div style={containerStyle}>
-    <aside style={sidePanelStyle}>
-      <Options />
-    </aside>
+  <GraphProvider>
+    <div style={containerStyle}>
+      {/* side panel */}
+      <aside style={sidePanelStyle}>
+        <Options />
+      </aside>
 
-    <main style={canvasStyle}>
-      <CanvasProvider />
-    </main>
-  </div>
+      {/* 3‑D canvas */}
+      <main style={canvasStyle}>
+        <CanvasProvider />
+      </main>
+    </div>
+  </GraphProvider>
 );
 
 const containerStyle: React.CSSProperties = {
