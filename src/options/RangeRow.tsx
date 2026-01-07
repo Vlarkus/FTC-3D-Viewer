@@ -15,39 +15,21 @@ export const RangeRow: React.FC<Props> = ({
   setMin,
   setMax,
 }) => (
-  <div style={rowStyle}>
-    <div style={{ fontWeight: 600 }}>{label}</div>
-    <div style={inputsContainer}>
+  <div className="range-row">
+    <div className="range-row-label">{label}</div>
+    <div className="range-row-inputs">
       <input
         value={min}
         onChange={(e) => setMin(e.target.value)}
         placeholder="min"
-        style={inputStyle}
+        className="range-row-input"
       />
       <input
         value={max}
         onChange={(e) => setMax(e.target.value)}
         placeholder="max"
-        style={inputStyle}
+        className="range-row-input"
       />
     </div>
   </div>
 );
-
-const rowStyle: React.CSSProperties = {
-  display: "grid",
-  gap: 6,
-  marginBottom: 10,
-};
-
-const inputsContainer: React.CSSProperties = {
-  display: "flex",
-  gap: 8,
-};
-
-const inputStyle: React.CSSProperties = {
-  flex: 1,
-  padding: 8,
-  border: "1px solid #ccc",
-  borderRadius: 6,
-};

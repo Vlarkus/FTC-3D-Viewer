@@ -7,7 +7,6 @@ import { useGraph } from "../context/GraphContext";
 
 export const Options: React.FC = () => {
   const {
-    // raw strings for the inputs
     xMin,
     xMax,
     yMin,
@@ -26,16 +25,15 @@ export const Options: React.FC = () => {
     setXStep,
     setYStep,
     setZStep,
-    // other controls
     showFaceGrid,
     setShowFaceGrid,
     addRandomPoint,
     resetPoints,
-  } = useGraph(); // <-- shared state
+  } = useGraph();
 
   return (
-    <div style={containerStyle}>
-      <h2 style={titleStyle}>Plot Box Settings</h2>
+    <div className="options-container">
+      <h2 className="options-title">Plot Box Settings</h2>
 
       <Section title="Ranges">
         <RangeRow
@@ -66,36 +64,29 @@ export const Options: React.FC = () => {
         <LabeledInput label="Y step" value={yStep} onChange={setYStep} />
         <LabeledInput label="Z step" value={zStep} onChange={setZStep} />
 
-        <div style={{ marginTop: 10 }}>
-          <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div className="options-checkbox-row">
+          <label className="options-checkbox-label">
             <input
               type="checkbox"
               checked={showFaceGrid}
               onChange={(e) => setShowFaceGrid(e.target.checked)}
             />
-            Show face gridlines
+            <span>Show face gridlines</span>
           </label>
         </div>
       </Section>
 
       <Section title="Test">
-        <button onClick={addRandomPoint}>Add random point</button>
-        <button style={{ marginLeft: 8 }} onClick={resetPoints}>
+        <button className="options-button" onClick={addRandomPoint}>
+          Add random point
+        </button>
+        <button
+          className="options-button options-button-secondary"
+          onClick={resetPoints}
+        >
           Reset points
         </button>
       </Section>
     </div>
   );
-};
-
-const containerStyle: React.CSSProperties = {
-  padding: 12,
-  boxSizing: "border-box",
-  fontFamily: "system-ui, sans-serif",
-  fontSize: 14,
-};
-
-const titleStyle: React.CSSProperties = {
-  fontWeight: 700,
-  marginBottom: 10,
 };

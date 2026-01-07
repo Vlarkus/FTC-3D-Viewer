@@ -24,11 +24,11 @@ const containerStyle: React.CSSProperties = {
 };
 
 const labelStyle: React.CSSProperties = {
-  color: "#333",
+  color: "#ffffffff",
 };
 
 const inputStyle: React.CSSProperties = {
   padding: 8,
-  border: "1px solid #ccc",
+  border: "1px solid #ffffffff",
   borderRadius: 6,
 };

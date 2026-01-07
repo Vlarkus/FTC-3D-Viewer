@@ -1,39 +1,56 @@
-/* Reset & basic box‑sizing */
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+/* Root layout (replaces containerStyle) */
+.app-root {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
 }
 
-/* Full‑screen root */
-html,
-body,
-#root {
-  height: 100%;
-  width: 100%;
+/* Side panel (replaces sidePanelStyle) */
+.side-panel {
+  flex: 0 0 320px;
+  min-width: 320px;
+  max-width: 320px;
+  background: #fafafa;
+  border-right: 1px solid #ddd;
+  overflow-y: auto;
+}
+
+/* Canvas container (replaces canvasStyle) */
+.canvas-wrapper {
+  flex: 1 1 auto;
+  background: #111;
+}
+
+/* Options panel container */
+.options-container {
+  padding: 12px;
+  box-sizing: border-box;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     Roboto, "Helvetica Neue", Arial, sans-serif;
-  background: #111;
-  color: #eee;
+  font-size: 14px;
 }
 
-/* Scrollbars for the side panel */
-aside {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(0, 0, 0, 0.3) transparent;
-}
-aside::-webkit-scrollbar {
-  width: 8px;
-}
-aside::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 4px;
+/* Title */
+.options-title {
+  font-weight: 700;
+  margin-bottom: 10px;
 }
 
-/* Simple button style used in Options */
-button {
+/* Checkbox row */
+.options-checkbox-row {
+  margin-top: 10px;
+}
+
+.options-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+
+/* Buttons in Test section */
+.options-button {
   cursor: pointer;
   background: #0066ff;
   color: #fff;
@@ -41,7 +58,36 @@ button {
   border-radius: 4px;
   padding: 6px 12px;
   font-size: 0.9rem;
+  transition: background 0.2s;
 }
-button:hover {
+
+.options-button:hover {
   background: #0055dd;
+}
+
+/* Second button spacing */
+.options-button-secondary {
+  margin-left: 8px;
+}
+.range-row {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.range-row-label {
+  font-weight: 600;
+}
+
+.range-row-inputs {
+  display: flex;
+  gap: 8px;
+}
+
+.range-row-input {
+  flex: 1 1 0;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  max-width: 140px; /* optional: keep fields from being too long */
 }
