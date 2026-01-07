@@ -29,6 +29,9 @@ export const Options: React.FC = () => {
     setShowFaceGrid,
     addRandomPoint,
     resetPoints,
+    // NEW: camera controls
+    cameraMode,
+    setCameraMode,
   } = useGraph();
 
   return (
@@ -72,6 +75,30 @@ export const Options: React.FC = () => {
               onChange={(e) => setShowFaceGrid(e.target.checked)}
             />
             <span>Show face gridlines</span>
+          </label>
+        </div>
+      </Section>
+
+      {/* NEW: Camera Mode Section */}
+      <Section title="Camera Mode">
+        <div className="camera-mode-group">
+          <label className="camera-mode-option">
+            <input
+              type="radio"
+              name="cameraMode"
+              checked={cameraMode === "free"}
+              onChange={() => setCameraMode("free")}
+            />
+            <span>Free camera</span>
+          </label>
+          <label className="camera-mode-option">
+            <input
+              type="radio"
+              name="cameraMode"
+              checked={cameraMode === "follow"}
+              onChange={() => setCameraMode("follow")}
+            />
+            <span>Follow center</span>
           </label>
         </div>
       </Section>
