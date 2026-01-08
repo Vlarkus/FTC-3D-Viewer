@@ -48,8 +48,8 @@ export const ConnectionPanel: React.FC = () => {
                     type="text"
                     value={ipAddress}
                     onChange={(e) => setIpAddress(e.target.value)}
-                    placeholder="192.168.43.1"
-                    className="flex-1 bg-background border border-border rounded px-3 py-2 text-sm focus:outline-none focus:border-accent"
+                    placeholder="Enter Robot Controller IP"
+                    className="flex-1 bg-background border border-border rounded px-3 py-2 text-sm focus:outline-none focus:border-accent placeholder:text-muted-foreground/50"
                 />
                 <button
                     onClick={handleConnect}

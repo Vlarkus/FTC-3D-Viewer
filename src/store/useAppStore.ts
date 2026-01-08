@@ -87,7 +87,7 @@ interface AppState {
 
 export const useAppStore = create<AppState>((set) => ({
     // Connection
-    ipAddress: '192.168.43.1',
+    ipAddress: '',
     connectionStatus: 'disconnected',
     setIpAddress: (ip) => set({ ipAddress: ip }),
     setConnectionStatus: (status) => set({ connectionStatus: status }),
@@ -104,18 +104,71 @@ export const useAppStore = create<AppState>((set) => ({
     showGrid: true,
     setShowGrid: (show) => set({ showGrid: show }),
     axes: {
-        x: { min: -10, max: 10, size: 20, step: 2 },
-        y: { min: -10, max: 10, size: 20, step: 2 },
-        z: { min: -10, max: 10, size: 20, step: 2 },
+        x: { min: -10, max: 10, size: 10, step: 1 },
+        y: { min: -10, max: 10, size: 10, step: 1 },
+        z: { min: -10, max: 10, size: 10, step: 1 },
     },
-    setAxisSettings: (axis, settings) => set((state) => ({
-        axes: { ...state.axes, [axis]: { ...state.axes[axis], ...settings } }
-    })),
+    setAxisSettings: (axis, settings) => set((state) => {
+        const newSettings = { ...state.axes[axis], ...settings };
+        // Enforce step >= 0
+        if (newSettings.step < 0) newSettings.step = 0;
+        return {
+            axes: { ...state.axes, [axis]: newSettings }
+        };
+    }),
 
     // Geometry
-    groups: {},
-    entities: {},
-    rootGroupIds: [],
+    groups: {
+        'demo-group': {
+            id: 'demo-group',
+            name: 'Demo Geometry',
+            visible: false,
+            childrenGroups: [],
+            childrenEntities: ['demo-point', 'demo-line', 'demo-plane']
+        }
+    },
+    entities: {
+        'demo-point': {
+            id: 'demo-point',
+            name: 'Translucent Box',
+            type: 'point',
+            parentId: 'demo-group',
+            visible: true,
+            color: '#00ff00',
+            opacity: 0.5,
+            coordinateSpace: 'plot',
+            visibleIfOutsideGraph: true,
+            data: { position: [0, 5, 0], radius: 2, shape: 'box' }
+        },
+        'demo-line': {
+            id: 'demo-line',
+            name: 'Capped Line',
+            type: 'line',
+            parentId: 'demo-group',
+            visible: true,
+            color: 'orange',
+            opacity: 1,
+            coordinateSpace: 'plot',
+            visibleIfOutsideGraph: false,
+            data: { start: [-50, 5, -50], end: [50, 5, 50], thickness: 5, style: 'dashed' }
+        },
+        'demo-plane': {
+            id: 'demo-plane',
+            name: 'Limited Spiral',
+            type: 'parametric',
+            parentId: 'demo-group',
+            visible: true,
+            color: '#00ccff',
+            opacity: 0.8,
+            coordinateSpace: 'plot',
+            visibleIfOutsideGraph: false,
+            data: {
+                equation: { x: "u * Math.cos(v)", y: "u * Math.sin(v)", z: "v * 2" },
+                domain: { u: [2, 12], v: [0, 40] }
+            }
+        }
+    },
+    rootGroupIds: ['demo-group'],
 
     addGroup: (group) => set((state) => {
         const newGroup: GeometryGroup = { ...group, childrenGroups: [], childrenEntities: [] };

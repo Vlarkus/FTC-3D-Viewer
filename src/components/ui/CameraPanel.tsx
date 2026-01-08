@@ -4,6 +4,33 @@ import { MousePointer2, Orbit } from 'lucide-react';
 
 export const CameraPanel: React.FC = () => {
     const { cameraMode, setCameraMode, orbitTarget, setOrbitTarget, cameraSpeed, setCameraSpeed } = useAppStore();
+    const [isTouch, setIsTouch] = React.useState(false);
+    const [warning, setWarning] = React.useState('');
+
+    React.useEffect(() => {
+        // Simple touch detection
+        const checkTouch = () => {
+            // Coarse pointer usually means touch
+            if (window.matchMedia("(pointer: coarse)").matches) {
+                setIsTouch(true);
+                if (cameraMode === 'free') {
+                    setCameraMode('orbit'); // Enforce orbit if somehow in free
+                    setWarning('Free camera disabled on touch devices');
+                    setTimeout(() => setWarning(''), 3000);
+                }
+            }
+        };
+        checkTouch();
+    }, [cameraMode]); // Re-check if mode changes, ensuring enforcement
+
+    const handleFreeModeClick = () => {
+        if (isTouch) {
+            setWarning('Free camera requires mouse/keyboard');
+            setTimeout(() => setWarning(''), 3000);
+            return;
+        }
+        setCameraMode('free');
+    };
 
     return (
         <div className="space-y-4">
@@ -17,13 +44,21 @@ export const CameraPanel: React.FC = () => {
                     <Orbit size={14} /> Orbit
                 </button>
                 <button
-                    onClick={() => setCameraMode('free')}
-                    className={`flex-1 flex items-center justify-center gap-2 py-1.5 text-xs rounded transition-colors ${cameraMode === 'free' ? 'bg-surface-highlight text-white' : 'text-muted-foreground hover:text-foreground'
+                    onClick={handleFreeModeClick}
+                    className={`flex-1 flex items-center justify-center gap-2 py-1.5 text-xs rounded transition-colors ${cameraMode === 'free' ? 'bg-surface-highlight text-white' :
+                        isTouch ? 'text-muted-foreground/50 cursor-not-allowed' : 'text-muted-foreground hover:text-foreground'
                         }`}
                 >
                     <MousePointer2 size={14} /> Free
                 </button>
             </div>
+
+            {/* Warning Message */}
+            {warning && (
+                <div className="text-[10px] text-yellow-500 font-bold bg-yellow-500/10 p-2 rounded text-center">
+                    {warning}
+                </div>
+            )}
 
             {/* Orbit Options */}
             {cameraMode === 'orbit' && (

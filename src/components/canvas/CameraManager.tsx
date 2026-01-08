@@ -15,7 +15,46 @@ export const CameraManager = () => {
 
     // Keyboard Listeners
     useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => { keys.current[e.code] = true; };
+        const handleKeyDown = (e: KeyboardEvent) => {
+            // Prevent scrolling with Space/Arrow keys if in free mode (and assumed locked)
+            // We check if keys.current is relevant or just generally prevent default for movement keys
+            if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.code)) {
+
+                // Only if we are in free mode... but useEffect closure has stale state?
+                // We need to use a ref or check the store closer. 
+                // Or just rely on the fact that if we are focused on canvas, we probably want to prevent default.
+                // But better: check valid keys.
+                // We'll trust that blocking these keys globally when this component is mounted is okay? 
+                // No, CameraManager is always mounted. We must check mode.
+                // We can't access 'cameraMode' from prop in this effect without re-binding.
+                // Ideally we bind handlers in useFrame or check a Ref for mode.
+                e.preventDefault();
+            }
+            keys.current[e.code] = true;
+        };
+        const handleKeyUp = (e: KeyboardEvent) => { keys.current[e.code] = false; };
+
+        window.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('keyup', handleKeyUp);
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('keyup', handleKeyUp);
+        };
+    }, []); // Empty dep array -> one time bind. BUT we need mode check.
+
+    // Actually, let's re-bind or use a Ref for mode.
+    const modeRef = useRef(cameraMode);
+    useEffect(() => { modeRef.current = cameraMode; }, [cameraMode]);
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (modeRef.current === 'free') {
+                if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.code)) {
+                    e.preventDefault();
+                }
+            }
+            keys.current[e.code] = true;
+        };
         const handleKeyUp = (e: KeyboardEvent) => { keys.current[e.code] = false; };
 
         window.addEventListener('keydown', handleKeyDown);
@@ -63,6 +102,21 @@ export const CameraManager = () => {
         }
     }, [cameraMode, camera]);
 
+    // Speed Control (Scroll Wheel)
+    useEffect(() => {
+        const handleWheel = (e: WheelEvent) => {
+            if (cameraMode === 'free') {
+                const delta = e.deltaY;
+                const speedChange = delta > 0 ? -1 : 1; // Scroll up = Faster, Down = Slower
+                const newSpeed = Math.max(1, Math.min(100, cameraSpeed + speedChange));
+                useAppStore.getState().setCameraSpeed(newSpeed);
+            }
+        };
+
+        window.addEventListener('wheel', handleWheel);
+        return () => window.removeEventListener('wheel', handleWheel);
+    }, [cameraMode, cameraSpeed]);
+
     return (
         <>
             {cameraMode === 'orbit' && (
@@ -70,6 +124,11 @@ export const CameraManager = () => {
                     ref={orbitRef}
                     makeDefault
                     enableDamping
+                    mouseButtons={{
+                        LEFT: THREE.MOUSE.ROTATE,
+                        MIDDLE: THREE.MOUSE.DOLLY,
+                        RIGHT: THREE.MOUSE.ROTATE
+                    }}
                 />
             )}
 

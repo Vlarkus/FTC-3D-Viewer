@@ -67,7 +67,7 @@ const AxisControl = ({ label, axis, settings, update }: { label: string, axis: '
                     <span className="block text-[10px] text-muted-foreground">Step</span>
                     <NumberInput
                         value={settings.step}
-                        min={0.1}
+                        min={0}
                         onChange={(val) => update(axis, { step: val })}
                     />
                 </div>

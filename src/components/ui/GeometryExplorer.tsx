@@ -12,10 +12,28 @@ const TypeIcon = ({ type }: { type: string }) => {
     }
 };
 
+// Helper for Touch Detection (could be a hook, but keeping it local for speed as requested)
+const useIsTouch = () => {
+    const [isTouch, setIsTouch] = useState(false);
+    React.useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const hasCoarsePointer = window.matchMedia("(pointer: coarse)").matches;
+            const hasTouchPoints = navigator.maxTouchPoints > 0;
+            const hasTouchEvents = 'ontouchstart' in window;
+
+            if (hasCoarsePointer || hasTouchPoints || hasTouchEvents) {
+                setIsTouch(true);
+            }
+        }
+    }, []);
+    return isTouch;
+};
+
 const GroupItem = ({ groupId, depth = 0 }: { groupId: string, depth?: number }) => {
     const group = useAppStore(state => state.groups[groupId]);
     const toggleVisibility = useAppStore(state => state.toggleVisibility);
     const [expanded, setExpanded] = useState(true);
+    const isTouch = useIsTouch();
 
     if (!group) return null;
 
@@ -42,7 +60,11 @@ const GroupItem = ({ groupId, depth = 0 }: { groupId: string, depth?: number }) 
 
                 <button
                     onClick={(e) => { e.stopPropagation(); toggleVisibility(groupId, true); }}
-                    className="p-1 hover:text-white text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                    className={clsx(
+                        "p-1 hover:text-white text-muted-foreground transition-opacity",
+                        // On touch: always visible (opacity-100). On desktop: visible on group hover.
+                        isTouch ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                    )}
                 >
                     {group.visible ? <Eye size={14} /> : <EyeOff size={14} />}
                 </button>
@@ -69,6 +91,7 @@ const GroupItem = ({ groupId, depth = 0 }: { groupId: string, depth?: number }) 
 const EntityItem = ({ entityId, depth }: { entityId: string, depth: number }) => {
     const entity = useAppStore(state => state.entities[entityId]);
     const toggleVisibility = useAppStore(state => state.toggleVisibility);
+    const isTouch = useIsTouch();
 
     if (!entity) return null;
 
@@ -85,7 +108,10 @@ const EntityItem = ({ entityId, depth }: { entityId: string, depth: number }) =>
             <span className="flex-1 truncate">{entity.name}</span>
             <button
                 onClick={(e) => { e.stopPropagation(); toggleVisibility(entityId, false); }}
-                className="p-1 hover:text-white text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                className={clsx(
+                    "p-1 hover:text-white text-muted-foreground transition-opacity",
+                    isTouch ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                )}
             >
                 {entity.visible ? <Eye size={12} /> : <EyeOff size={12} />}
             </button>
@@ -101,54 +127,6 @@ export const GeometryExplorer = () => {
         <div className="space-y-2">
             <div className="flex justify-between items-center px-1">
                 <span className="text-xs font-bold text-muted-foreground uppercase">Hierarchy</span>
-                <button
-                    onClick={() => {
-                        // Demo Data Injection
-                        const api = (window as any).ftc3d;
-                        if (api) {
-                            const rootId = api.addGroup("V2 Demo");
-
-                            // Point with Shape & Opacity
-                            api.addPoint("Translucent Box", [0, 5, 0], rootId, {
-                                color: "#00ff00",
-                                shape: 'box',
-                                radius: 2,
-                                opacity: 0.5
-                            });
-
-                            // Dashed Segment
-                            api.addSegment("Dashed Line", [-10, 0, -10], [10, 10, 10], rootId, {
-                                color: "#ff00ff",
-                                style: 'dashed',
-                                thickness: 3
-                            });
-
-                            // Full Parametric Surface (e.g. Spiral / Helix Ramp)
-                            // x = u * cos(v), z = u * sin(v), y = v (Height) mapped to Y input?
-                            // Remember: Input X->VisX, Input Y->VisZ, Input Z->VisY
-                            // If we want a visual spiral up:
-                            // We need Input [x, z_height, y_depth]
-                            api.addParametricSurface("Spiral Ramp", {
-                                x: "u * Math.cos(v)",
-                                y: "u * Math.sin(v)", // Depth
-                                z: "v * 2"            // Height
-                            }, { u: [2, 5], v: [0, 20] }, rootId, {
-                                color: "#00ccff",
-                                opacity: 0.8
-                            });
-                            // Capped Line (Testing Clip)
-                            // This line spans from -20 to +20, but if grid is 10, it should clip.
-                            api.addSegment("Capped Infinite Line", [-100, 5, -100], [100, 5, 100], rootId, {
-                                color: "orange",
-                                thickness: 5,
-                                visibleIfOutsideGraph: false
-                            });
-                        }
-                    }}
-                    className="text-[10px] bg-accent/20 hover:bg-accent/40 text-accent px-2 py-0.5 rounded flex items-center gap-1"
-                >
-                    <Plus size={10} /> Demo V2
-                </button>
             </div>
 
             <div className="border border-border rounded bg-background/50 min-h-[200px] overflow-hidden">
