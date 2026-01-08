@@ -161,6 +161,7 @@ const ParametricRenderer = ({ entity }: { entity: GeometryEntity }) => {
     const { equation, domain } = entity.data; // equation is now { x, y, z } string or simple string
     const clippingPlanes = useClippingPlanes(!entity.visibleIfOutsideGraph);
     const transform = useCoordinateTransform(entity.coordinateSpace);
+    const axes = useAppStore(state => state.axes);
 
     // Memoize geometry
     const geometry = React.useMemo(() => {
@@ -197,28 +198,9 @@ const ParametricRenderer = ({ entity }: { entity: GeometryEntity }) => {
                 const dy = funcY(u, v);
                 const dz = funcZ(u, v);
 
-                // Transform to Visual Coordinates
-                // We must apply the transform logic MANUALLY here because we are in a loop
-                // and useCoordinateTransform returns a hook-bound function (safe to use here? Yes, it's just a closure)
-                // BUT we can't call hooks inside useMemo.
-                // We need to capture the AXES inside useMemo dependency or pass map function in.
-                // For performance, let's just return Raw Data here? 
-                // NO, buffer geometry needs final positions.
-
-                // Let's defer transform? No, geometry is rigid.
-                // We will assume "raw data" for the geometry, and apply <mesh scale/position>?
-                // Non-uniform scaling (PlotBox) is weird on arbitrary meshes.
-                // BEST APPROACH: Apply the map inside this loop.
-                // We need access to 'axes' inside useMemo. 
-                // We will rely on re-computing if axes change (it's fine, axes are stable usually).
-
-                positions.push(dx, dz, dy); // Store as [x, z, y] for now? 
-                // Wait, if we use the Transform logic:
-                // We should store RAW data here, and apply transform in the Vertex Shader? 
-                // OR just compute it here. Let's compute it here.
-
-                // We can't access 'transform' (hook result) inside useMemo efficiently without re-creating geom every frame if axes change.
-                // That's acceptable for V2.
+                // Apply coordinate transform (plot space -> visual space)
+                const [vx, vy, vz] = transform([dx, dy, dz]);
+                positions.push(vx, vy, vz);
             }
         }
 
@@ -238,7 +220,7 @@ const ParametricRenderer = ({ entity }: { entity: GeometryEntity }) => {
         geom.setIndex(indices);
         geom.computeVertexNormals();
         return geom;
-    }, [equation, domain]); // Missing 'axes' dependency if we did transform! 
+    }, [equation, domain, axes, transform]);
 
     // To properly support transform, we should wrap the mess in a group and apply scale?
     // But PlotBox scale is offset-based ((val - min) / range). It's not a simple scale.

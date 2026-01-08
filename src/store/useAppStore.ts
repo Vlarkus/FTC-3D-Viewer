@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { v4 as uuidv4 } from 'uuid';
 
 export type CameraMode = 'free' | 'orbit';
 export type OrbitTarget = 'origin' | 'robot';
@@ -83,6 +84,7 @@ interface AppState {
     toggleVisibility: (id: string, isGroup: boolean) => void;
     removeGroup: (id: string) => void;
     removeEntity: (id: string) => void;
+    loadGeometryConfig: (config: any[]) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -117,58 +119,10 @@ export const useAppStore = create<AppState>((set) => ({
         };
     }),
 
-    // Geometry
-    groups: {
-        'demo-group': {
-            id: 'demo-group',
-            name: 'Demo Geometry',
-            visible: false,
-            childrenGroups: [],
-            childrenEntities: ['demo-point', 'demo-line', 'demo-plane']
-        }
-    },
-    entities: {
-        'demo-point': {
-            id: 'demo-point',
-            name: 'Translucent Box',
-            type: 'point',
-            parentId: 'demo-group',
-            visible: true,
-            color: '#00ff00',
-            opacity: 0.5,
-            coordinateSpace: 'plot',
-            visibleIfOutsideGraph: true,
-            data: { position: [0, 5, 0], radius: 2, shape: 'box' }
-        },
-        'demo-line': {
-            id: 'demo-line',
-            name: 'Capped Line',
-            type: 'line',
-            parentId: 'demo-group',
-            visible: true,
-            color: 'orange',
-            opacity: 1,
-            coordinateSpace: 'plot',
-            visibleIfOutsideGraph: false,
-            data: { start: [-50, 5, -50], end: [50, 5, 50], thickness: 5, style: 'dashed' }
-        },
-        'demo-plane': {
-            id: 'demo-plane',
-            name: 'Limited Spiral',
-            type: 'parametric',
-            parentId: 'demo-group',
-            visible: true,
-            color: '#00ccff',
-            opacity: 0.8,
-            coordinateSpace: 'plot',
-            visibleIfOutsideGraph: false,
-            data: {
-                equation: { x: "u * Math.cos(v)", y: "u * Math.sin(v)", z: "v * 2" },
-                domain: { u: [2, 12], v: [0, 40] }
-            }
-        }
-    },
-    rootGroupIds: ['demo-group'],
+    // Geometry (initialized empty, loaded from config)
+    groups: {},
+    entities: {},
+    rootGroupIds: [],
 
     addGroup: (group) => set((state) => {
         const newGroup: GeometryGroup = { ...group, childrenGroups: [], childrenEntities: [] };
@@ -243,5 +197,117 @@ export const useAppStore = create<AppState>((set) => ({
     removeEntity: (id) => set((state) => {
         const { [id]: deleted, ...remainingEntities } = state.entities;
         return { entities: remainingEntities };
+    }),
+
+    loadGeometryConfig: (config) => set((state) => {
+        const newGroups: Record<string, GeometryGroup> = {};
+        const newEntities: Record<string, GeometryEntity> = {};
+        const newRootGroupIds: string[] = [];
+
+        const processConfig = (item: any, parentId?: string): string => {
+            const id = uuidv4();
+
+            if (item.type === 'group') {
+                // Create group
+                const group: GeometryGroup = {
+                    id,
+                    name: item.name,
+                    visible: item.options.visible ?? true,
+                    parentId,
+                    childrenGroups: [],
+                    childrenEntities: []
+                };
+
+                // Process children
+                item.children.forEach((child: any) => {
+                    const childId = processConfig(child, id);
+                    if (child.type === 'group') {
+                        group.childrenGroups.push(childId);
+                    } else {
+                        group.childrenEntities.push(childId);
+                    }
+                });
+
+                newGroups[id] = group;
+
+                // Add to root if no parent
+                if (!parentId) {
+                    newRootGroupIds.push(id);
+                }
+            } else {
+                // Create entity (point, segment, parametric)
+                let entity: GeometryEntity;
+
+                if (item.type === 'point') {
+                    entity = {
+                        id,
+                        name: item.name,
+                        type: 'point',
+                        parentId,
+                        visible: true,
+                        color: item.options.color || 'red',
+                        opacity: item.options.opacity ?? 1,
+                        coordinateSpace: item.options.coordinateSpace || 'plot',
+                        visibleIfOutsideGraph: item.options.visibleIfOutsideGraph ?? true,
+                        data: {
+                            position: item.position,
+                            radius: item.options.radius ?? 0.5,
+                            shape: item.options.shape || 'sphere'
+                        }
+                    };
+                } else if (item.type === 'segment') {
+                    entity = {
+                        id,
+                        name: item.name,
+                        type: 'line',
+                        parentId,
+                        visible: true,
+                        color: item.options.color || 'green',
+                        opacity: item.options.opacity ?? 1,
+                        coordinateSpace: item.options.coordinateSpace || 'plot',
+                        visibleIfOutsideGraph: item.options.visibleIfOutsideGraph ?? true,
+                        data: {
+                            start: item.start,
+                            end: item.end,
+                            thickness: item.options.thickness ?? 2,
+                            style: item.options.style || 'solid',
+                            dashSize: item.options.dashSize,
+                            gapSize: item.options.gapSize
+                        }
+                    };
+                } else if (item.type === 'parametric') {
+                    entity = {
+                        id,
+                        name: item.name,
+                        type: 'parametric',
+                        parentId,
+                        visible: true,
+                        color: item.options.color || 'blue',
+                        opacity: item.options.opacity ?? 1,
+                        coordinateSpace: item.options.coordinateSpace || 'plot',
+                        visibleIfOutsideGraph: item.options.visibleIfOutsideGraph ?? true,
+                        data: {
+                            equation: item.equation,
+                            domain: item.domain
+                        }
+                    };
+                } else {
+                    throw new Error(`Unknown entity type: ${item.type}`);
+                }
+
+                newEntities[id] = entity;
+            }
+
+            return id;
+        };
+
+        // Process all top-level items
+        config.forEach((item: any) => processConfig(item));
+
+        return {
+            groups: newGroups,
+            entities: newEntities,
+            rootGroupIds: newRootGroupIds
+        };
     }),
 }));
