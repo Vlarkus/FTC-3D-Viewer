@@ -1,3 +1,4 @@
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { ConnectionPanel } from './ConnectionPanel';
 import { GeometryExplorer } from './GeometryExplorer';
 import { CameraPanel } from './CameraPanel';
@@ -7,7 +8,7 @@ import { AddGeometryPanel } from './AddGeometryPanel';
 import { useAppStore } from '../../store/useAppStore';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { X } from 'lucide-react';
+import { X, GripVertical } from 'lucide-react';
 
 function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
@@ -16,6 +17,46 @@ function cn(...inputs: ClassValue[]) {
 export const Sidebar = () => {
     const isSidebarOpen = useAppStore((state) => state.isSidebarOpen);
     const setSidebarOpen = useAppStore((state) => state.setSidebarOpen);
+    const sidebarWidth = useAppStore((state) => state.sidebarWidth);
+    const setSidebarWidth = useAppStore((state) => state.setSidebarWidth);
+
+    const [isResizing, setIsResizing] = useState(false);
+    const sidebarRef = useRef<HTMLDivElement>(null);
+
+    const minWidth = 280;
+    const maxWidth = Math.min(600, window.innerWidth * 0.5);
+
+    const startResizing = useCallback((e: React.MouseEvent) => {
+        e.preventDefault();
+        setIsResizing(true);
+    }, []);
+
+    const stopResizing = useCallback(() => {
+        setIsResizing(false);
+    }, []);
+
+    const resize = useCallback((e: MouseEvent) => {
+        if (isResizing) {
+            const newWidth = e.clientX;
+            if (newWidth >= minWidth && newWidth <= maxWidth) {
+                setSidebarWidth(newWidth);
+            }
+        }
+    }, [isResizing, maxWidth, setSidebarWidth]);
+
+    useEffect(() => {
+        if (isResizing) {
+            window.addEventListener('mousemove', resize);
+            window.addEventListener('mouseup', stopResizing);
+        } else {
+            window.removeEventListener('mousemove', resize);
+            window.removeEventListener('mouseup', stopResizing);
+        }
+        return () => {
+            window.removeEventListener('mousemove', resize);
+            window.removeEventListener('mouseup', stopResizing);
+        };
+    }, [isResizing, resize, stopResizing]);
 
     return (
         <>
@@ -27,12 +68,33 @@ export const Sidebar = () => {
                 />
             )}
 
-            <div className={cn(
-                "fixed inset-y-0 left-0 w-80 border-r border-border bg-surface flex flex-col z-50 shadow-xl transition-all duration-300 md:relative md:translate-x-0 overflow-hidden",
-                !isSidebarOpen && "-translate-x-full md:w-0 md:border-r-0 md:translate-x-0"
-            )}>
+            <div
+                ref={sidebarRef}
+                className={cn(
+                    "fixed inset-y-0 left-0 bg-surface flex flex-col z-50 shadow-xl transition-all duration-300 md:relative md:translate-x-0 overflow-hidden",
+                    !isSidebarOpen ? "-translate-x-full md:w-0 md:translate-x-0" : "w-full md:border-r md:border-border"
+                )}
+                style={{
+                    width: isSidebarOpen ? (window.innerWidth < 768 ? '100%' : `${sidebarWidth}px`) : '0'
+                }}
+            >
+                {/* Resize Handle - Desktop Only */}
+                {isSidebarOpen && window.innerWidth >= 768 && (
+                    <div
+                        onMouseDown={startResizing}
+                        className={cn(
+                            "absolute top-0 right-0 w-1.5 h-full cursor-col-resize hover:bg-accent/40 transition-colors z-[100] group flex items-center justify-center",
+                            isResizing && "bg-accent/60"
+                        )}
+                    >
+                        <div className="hidden group-hover:block text-accent/50 pointer-events-none">
+                            <GripVertical size={16} />
+                        </div>
+                    </div>
+                )}
+
                 {/* Header */}
-                <div className="p-4 border-b border-border flex items-center justify-between">
+                <div className="p-4 border-b border-border flex items-center justify-between flex-shrink-0">
                     <div>
                         <h1 className="text-xl font-bold tracking-tight text-foreground">
                             FTC 3D <span className="text-accent">Viewer</span>

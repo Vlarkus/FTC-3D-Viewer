@@ -87,12 +87,18 @@ interface AppState {
     // Actions
     addGroup: (group: Omit<GeometryGroup, 'childrenGroups' | 'childrenEntities'>) => void;
     addEntity: (entity: GeometryEntity) => void;
+    createGroup: (name: string, parentId?: string) => void;
+    moveItem: (id: string, isGroup: boolean, direction: 'up' | 'down') => void;
+    changeParent: (id: string, isGroup: boolean, newParentId: string | null) => void;
     toggleVisibility: (id: string, isGroup: boolean) => void;
-    removeGroup: (id: string) => void;
+    removeGroup: (id: string, recursive?: boolean) => void;
     removeEntity: (id: string) => void;
+    reorderItem: (activeId: string, overId: string, isGroup: boolean) => void;
     loadGeometryConfig: (config: any[]) => void;
     isSidebarOpen: boolean;
     setSidebarOpen: (open: boolean) => void;
+    sidebarWidth: number;
+    setSidebarWidth: (width: number) => void;
 
     // Robot Visual Settings
     robotSettings: {
@@ -211,6 +217,129 @@ export const useAppStore = create<AppState>((set) => ({
         }
     }),
 
+    createGroup: (name, parentId) => set((state) => {
+        const id = `group-${uuidv4()}`;
+        const newGroup: GeometryGroup = {
+            id,
+            name,
+            parentId,
+            visible: true,
+            childrenGroups: [],
+            childrenEntities: []
+        };
+
+        const newState = {
+            groups: { ...state.groups, [id]: newGroup }
+        };
+
+        if (parentId && state.groups[parentId]) {
+            return {
+                groups: {
+                    ...newState.groups,
+                    [parentId]: {
+                        ...state.groups[parentId],
+                        childrenGroups: [...state.groups[parentId].childrenGroups, id]
+                    }
+                }
+            };
+        } else {
+            return {
+                groups: newState.groups,
+                rootGroupIds: [...state.rootGroupIds, id]
+            };
+        }
+    }),
+
+    moveItem: (id, isGroup, direction) => set((state) => {
+        const parentId = isGroup ? state.groups[id]?.parentId : state.entities[id]?.parentId;
+
+        const getNewList = (list: string[]) => {
+            const index = list.indexOf(id);
+            if (index === -1) return list;
+            const newList = [...list];
+            const swapIndex = direction === 'up' ? index - 1 : index + 1;
+            if (swapIndex < 0 || swapIndex >= list.length) return list;
+            [newList[index], newList[swapIndex]] = [newList[swapIndex], newList[index]];
+            return newList;
+        };
+
+        if (parentId) {
+            const parent = state.groups[parentId];
+            if (!parent) return {};
+            return {
+                groups: {
+                    ...state.groups,
+                    [parentId]: {
+                        ...parent,
+                        childrenGroups: isGroup ? getNewList(parent.childrenGroups) : parent.childrenGroups,
+                        childrenEntities: !isGroup ? getNewList(parent.childrenEntities) : parent.childrenEntities
+                    }
+                }
+            };
+        } else {
+            return {
+                rootGroupIds: isGroup ? getNewList(state.rootGroupIds) : state.rootGroupIds,
+                rootEntityIds: !isGroup ? getNewList(state.rootEntityIds) : state.rootEntityIds
+            };
+        }
+    }),
+
+    changeParent: (id, isGroup, newParentId) => set((state) => {
+        const oldParentId = isGroup ? state.groups[id]?.parentId : state.entities[id]?.parentId;
+        if (oldParentId === newParentId) return {};
+
+        // 1. Remove from old parent
+        let nextRootGroupIds = [...state.rootGroupIds];
+        let nextRootEntityIds = [...state.rootEntityIds];
+        let nextGroups = { ...state.groups };
+
+        if (oldParentId) {
+            const oldParent = nextGroups[oldParentId];
+            nextGroups[oldParentId] = {
+                ...oldParent,
+                childrenGroups: isGroup ? oldParent.childrenGroups.filter(gid => gid !== id) : oldParent.childrenGroups,
+                childrenEntities: !isGroup ? oldParent.childrenEntities.filter(eid => eid !== id) : oldParent.childrenEntities
+            };
+        } else {
+            if (isGroup) nextRootGroupIds = nextRootGroupIds.filter(gid => gid !== id);
+            else nextRootEntityIds = nextRootEntityIds.filter(eid => eid !== id);
+        }
+
+        // 2. Update item's parent pointer
+        if (isGroup) {
+            nextGroups[id] = { ...nextGroups[id], parentId: newParentId || undefined };
+        } else {
+            const nextEntities = { ...state.entities };
+            nextEntities[id] = { ...nextEntities[id], parentId: newParentId || undefined };
+            // Need to return entities too if we changed it
+        }
+
+        // 3. Add to new parent
+        if (newParentId) {
+            const newParent = nextGroups[newParentId];
+            nextGroups[newParentId] = {
+                ...newParent,
+                childrenGroups: isGroup ? [...newParent.childrenGroups, id] : newParent.childrenGroups,
+                childrenEntities: !isGroup ? [...newParent.childrenEntities, id] : newParent.childrenEntities
+            };
+        } else {
+            if (isGroup) nextRootGroupIds.push(id);
+            else nextRootEntityIds.push(id);
+        }
+
+        const result: any = {
+            groups: nextGroups,
+            rootGroupIds: nextRootGroupIds,
+            rootEntityIds: nextRootEntityIds
+        };
+
+        if (!isGroup) {
+            result.entities = { ...state.entities, [id]: { ...state.entities[id], parentId: newParentId || undefined } };
+        }
+
+        return result;
+    }),
+
     toggleVisibility: (id, isGroup) => set((state) => {
         if (isGroup) {
             const group = state.groups[id];
@@ -223,15 +352,159 @@ export const useAppStore = create<AppState>((set) => ({
         }
     }),
 
-    removeGroup: (id) => set((state) => {
-        const { [id]: deleted, ...remainingGroups } = state.groups;
-        const newRootIds = state.rootGroupIds.filter(gid => gid !== id);
-        return { groups: remainingGroups, rootGroupIds: newRootIds };
+    removeGroup: (id, recursive = true) => set((state) => {
+        const group = state.groups[id];
+        if (!group) return {};
+
+        let nextGroups = { ...state.groups };
+        let nextEntities = { ...state.entities };
+        let nextRootGroupIds = state.rootGroupIds.filter(gid => gid !== id);
+        let nextRootEntityIds = state.rootEntityIds.filter(eid => !group.childrenEntities.includes(eid));
+
+        // Recursive cleanup helper
+        const performDeepCleanup = (gid: string) => {
+            const g = nextGroups[gid];
+            if (!g) return;
+
+            // Clean up sub-children first
+            g.childrenGroups.forEach(performDeepCleanup);
+
+            // Clean up entities
+            g.childrenEntities.forEach(eid => {
+                delete nextEntities[eid];
+                nextRootEntityIds = nextRootEntityIds.filter(reid => reid !== eid);
+            });
+
+            // Clean up the group itself
+            delete nextGroups[gid];
+            nextRootGroupIds = nextRootGroupIds.filter(rgid => rgid !== gid);
+        };
+
+        if (recursive) {
+            // Delete all children
+            group.childrenGroups.forEach(performDeepCleanup);
+            group.childrenEntities.forEach(eid => {
+                delete nextEntities[eid];
+                nextRootEntityIds = nextRootEntityIds.filter(reid => reid !== eid);
+            });
+            delete nextGroups[id];
+        } else {
+            // Re-parent children to the group's parent or root
+            const newParentId = group.parentId;
+
+            // Move children groups
+            group.childrenGroups.forEach(gid => {
+                if (nextGroups[gid]) {
+                    nextGroups[gid] = { ...nextGroups[gid], parentId: newParentId || undefined };
+                }
+                if (!newParentId) nextRootGroupIds.push(gid);
+            });
+
+            // Move children entities
+            group.childrenEntities.forEach(eid => {
+                if (nextEntities[eid]) {
+                    nextEntities[eid] = { ...nextEntities[eid], parentId: newParentId || undefined };
+                }
+                if (!newParentId) nextRootEntityIds.push(eid);
+            });
+
+            // Update parent's children lists if applicable
+            if (newParentId && nextGroups[newParentId]) {
+                nextGroups[newParentId] = {
+                    ...nextGroups[newParentId],
+                    childrenGroups: [
+                        ...nextGroups[newParentId].childrenGroups.filter(gid => gid !== id),
+                        ...group.childrenGroups
+                    ],
+                    childrenEntities: [
+                        ...nextGroups[newParentId].childrenEntities,
+                        ...group.childrenEntities
+                    ]
+                };
+            }
+
+            delete nextGroups[id];
+        }
+
+        // Final safety check: remove from parent if it was a child and not handled by recursive/non-recursive move
+        const oldParentId = group.parentId;
+        if (oldParentId && nextGroups[oldParentId] && (recursive || !nextGroups[oldParentId].childrenGroups.includes(group.childrenGroups[0] || ''))) {
+            // Ensure the group is removed from its parent's list
+            nextGroups[oldParentId] = {
+                ...nextGroups[oldParentId],
+                childrenGroups: nextGroups[oldParentId].childrenGroups.filter(gid => gid !== id)
+            };
+        }
+
+        return {
+            groups: nextGroups,
+            entities: nextEntities,
+            rootGroupIds: nextRootGroupIds,
+            rootEntityIds: nextRootEntityIds
+        };
     }),
 
     removeEntity: (id) => set((state) => {
+        const entity = state.entities[id];
+        if (!entity) return {};
+
+        const parentId = entity.parentId;
+        let nextGroups = { ...state.groups };
+        let nextRootEntityIds = state.rootEntityIds.filter(eid => eid !== id);
+
+        if (parentId && nextGroups[parentId]) {
+            nextGroups[parentId] = {
+                ...nextGroups[parentId],
+                childrenEntities: nextGroups[parentId].childrenEntities.filter(eid => eid !== id)
+            };
+        }
+
         const { [id]: deleted, ...remainingEntities } = state.entities;
-        return { entities: remainingEntities };
+        return {
+            entities: remainingEntities,
+            groups: nextGroups,
+            rootEntityIds: nextRootEntityIds
+        };
+    }),
+
+    reorderItem: (activeId, overId, isGroup) => set((state) => {
+        const activeItem = isGroup ? state.groups[activeId] : state.entities[activeId];
+        const overItem = isGroup ? state.groups[overId] : state.entities[overId];
+
+        if (!activeItem || !overItem) return {};
+        if (activeItem.parentId !== overItem.parentId) return {};
+
+        const parentId = activeItem.parentId;
+
+        const moveInArray = (arr: string[], from: string, to: string) => {
+            const oldIndex = arr.indexOf(from);
+            const newIndex = arr.indexOf(to);
+            if (oldIndex === -1 || newIndex === -1) return arr;
+            const newArr = [...arr];
+            newArr.splice(oldIndex, 1);
+            newArr.splice(newIndex, 0, from);
+            return newArr;
+        };
+
+        if (parentId) {
+            const parent = state.groups[parentId];
+            if (!parent) return {};
+            return {
+                groups: {
+                    ...state.groups,
+                    [parentId]: {
+                        ...parent,
+                        childrenGroups: isGroup ? moveInArray(parent.childrenGroups, activeId, overId) : parent.childrenGroups,
+                        childrenEntities: !isGroup ? moveInArray(parent.childrenEntities, activeId, overId) : parent.childrenEntities
+                    }
+                }
+            };
+        } else {
+            return {
+                rootGroupIds: isGroup ? moveInArray(state.rootGroupIds, activeId, overId) : state.rootGroupIds,
+                rootEntityIds: !isGroup ? moveInArray(state.rootEntityIds, activeId, overId) : state.rootEntityIds
+            };
+        }
     }),
 
     loadGeometryConfig: (config) => set(() => {
@@ -365,6 +638,8 @@ export const useAppStore = create<AppState>((set) => ({
     }),
     isSidebarOpen: window.innerWidth > 768,
     setSidebarOpen: (open) => set({ isSidebarOpen: open }),
+    sidebarWidth: 320,
+    setSidebarWidth: (width) => set({ sidebarWidth: width }),
 
     // Robot Settings
     robotSettings: {
