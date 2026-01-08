@@ -1,20 +1,23 @@
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Environment } from '@react-three/drei';
+import { Environment } from '@react-three/drei';
 import { useAppStore } from '../../store/useAppStore';
 import { Robot } from './Robot';
-import { FieldGrid } from './Grid';
-import { Primitives } from './Primitives';
+import { PlotBox } from './PlotBox';
+import { CameraManager } from './CameraManager';
+import { GeometryRenderer } from './GeometryRenderer';
 
-export const Scene: React.FC = () => {
-    const { cameraMode, showGrid } = useAppStore();
+export const Scene = () => {
+    const { showGrid } = useAppStore();
 
     return (
         <Canvas
-            camera={{ position: [2, 2, 2], fov: 50 }}
+            id="canvas-container"
+            camera={{ position: [0, 5, 10], fov: 50 }}
             className="w-full h-full block"
             shadows
+            gl={{ localClippingEnabled: true }}
         >
-            <OrbitControls makeDefault enabled={cameraMode !== 'follow'} />
+            <CameraManager />
 
             {/* Lighting */}
             <ambientLight intensity={0.5} />
@@ -26,12 +29,11 @@ export const Scene: React.FC = () => {
             <Environment preset="city" />
 
             {/* World */}
-            {showGrid && <FieldGrid />}
-            <axesHelper args={[1]} />
+            {showGrid && <PlotBox />}
 
             {/* Entities */}
             <Robot />
-            <Primitives />
+            <GeometryRenderer />
 
             {/* Background */}
             <color attach="background" args={['#050505']} />

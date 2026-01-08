@@ -1,6 +1,6 @@
-
 import { Sidebar } from './components/ui/Sidebar';
 import { Scene } from './components/canvas/Scene';
+import './services/GeometryAPI'; // Initialize global API
 
 function App() {
     return (

@@ -2,39 +2,26 @@ import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Mesh } from 'three';
 import { telemetryStore } from '../../store/telemetryStore';
-import { useAppStore } from '../../store/useAppStore';
+import { useCoordinateMapper } from '../../hooks/useCoordinateMapper';
 
 export const Robot = () => {
     const meshRef = useRef<Mesh>(null);
-    const { cameraMode } = useAppStore();
+    const { mapPoint } = useCoordinateMapper(); // New hook for scaling
 
-    useFrame((state) => {
+    useFrame(() => {
         if (!meshRef.current) return;
 
-        // Transient update: Read directly from store without re-rendering React
+        // Transient update
         const { x, y, z, heading } = telemetryStore.getState();
 
-        // Update Position
-        meshRef.current.position.set(x, z, y); // Swapping Y/Z because FTC often uses Z-up, Three uses Y-up. Or standard X/Y ground. 
-        // Let's assume Z is Up in input, and Y is Up in WebGL. 
-        // actually, standard math plots often have Z up. R3F has Y up default.
-        // Let's map Input Z -> Output Y. Input Y -> Output -Z?
-        // For now, let's map directly: x->x, y->y, z->z. We can fix coordinates later.
-        // Actually, let's stick to X/Y ground plane since that's what grids usually do here.
-        // So z -> y (height).
+        // New: Map data coordinates to visual coordinates
+        const [vx, vy, vz] = mapPoint(x, y, z);
 
-        // meshRef.current.position.set(x, z, -y); // Example mapping
-        meshRef.current.position.set(x, y, z); // Simple Mapping
+        // Update Position
+        meshRef.current.position.set(vx, vy, vz);
 
         // Update Rotation (Heading)
         meshRef.current.rotation.y = heading;
-
-        // Camera follow logic
-        if (cameraMode === 'follow') {
-            const offset = 5;
-            state.camera.position.lerp({ x: x + offset, y: y + offset, z: z + offset } as any, 0.1);
-            state.camera.lookAt(x, y, z);
-        }
     });
 
     return (
