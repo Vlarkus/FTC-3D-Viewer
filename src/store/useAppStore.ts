@@ -17,6 +17,9 @@ export type GeometryType = 'point' | 'line' | 'plane' | 'parametric';
 export type CoordinateSpace = 'plot' | 'world';
 export type PointShape = 'sphere' | 'box' | 'cone';
 export type LineStyle = 'solid' | 'dashed';
+export type TrailMode = 'controllable' | 'temporary';
+export type TrailDisplay = 'none' | 'points' | 'segments';
+export type TrailLengthUnit = 'updates' | 'seconds';
 
 export interface GeometryEntity {
     id: string;
@@ -105,8 +108,24 @@ interface AppState {
         showRobot: boolean;
         showCoordinates: boolean;
         showProjections: boolean;
+        robotSize: number;
+        robotColor: string;
     };
     setRobotSettings: (settings: Partial<AppState['robotSettings']>) => void;
+
+    // Robot Trail Settings
+    trailSettings: {
+        mode: TrailMode;
+        display: TrailDisplay;
+        color: string;
+        controllablePaused: boolean;
+        breakNextSegment: boolean;
+        tempLength: number;
+        tempUnit: TrailLengthUnit;
+    };
+    setTrailSettings: (settings: Partial<AppState['trailSettings']>) => void;
+    clearTrail: () => void;
+    trailClearToken: number;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -646,8 +665,28 @@ export const useAppStore = create<AppState>((set) => ({
         showRobot: true,
         showCoordinates: true,
         showProjections: true,
+        robotSize: 0.2,
+        robotColor: '#800000',
     },
     setRobotSettings: (settings) => set((state) => ({
         robotSettings: { ...state.robotSettings, ...settings }
     })),
+
+    // Robot Trails
+    trailSettings: {
+        mode: 'controllable',
+        display: 'segments',
+        color: '#f59e0b',
+        controllablePaused: false,
+        breakNextSegment: false,
+        tempLength: 120,
+        tempUnit: 'updates',
+    },
+    setTrailSettings: (settings) => set((state) => ({
+        trailSettings: { ...state.trailSettings, ...settings }
+    })),
+    clearTrail: () => set((state) => ({
+        trailClearToken: state.trailClearToken + 1
+    })),
+    trailClearToken: 0,
 }));

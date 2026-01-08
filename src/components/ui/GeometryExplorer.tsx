@@ -400,6 +400,9 @@ export const GeometryExplorer = () => {
     const removeGroup = useAppStore(state => state.removeGroup);
     const removeEntity = useAppStore(state => state.removeEntity);
     const reorderItem = useAppStore(state => state.reorderItem);
+    const trailSettings = useAppStore(state => state.trailSettings);
+    const setTrailSettings = useAppStore(state => state.setTrailSettings);
+    const clearTrail = useAppStore(state => state.clearTrail);
 
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [deletionTarget, setDeletionTarget] = useState<{ id: string, name: string, isGroup: boolean } | null>(null);
@@ -530,6 +533,132 @@ export const GeometryExplorer = () => {
                         </SortableContext>
                     </div>
                 </DndContext>
+            </div>
+
+            <div className="pt-3 border-t border-border space-y-3">
+                <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-muted-foreground uppercase">Trails</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                    <button
+                        onClick={() => setTrailSettings({ mode: 'controllable' })}
+                        className={clsx(
+                            "py-2 rounded text-[10px] font-bold uppercase border transition-colors",
+                            trailSettings.mode === 'controllable'
+                                ? "bg-accent text-accent-foreground border-accent"
+                                : "bg-surface text-muted-foreground border-border hover:text-white"
+                        )}
+                    >
+                        Controllable
+                    </button>
+                    <button
+                        onClick={() => setTrailSettings({ mode: 'temporary' })}
+                        className={clsx(
+                            "py-2 rounded text-[10px] font-bold uppercase border transition-colors",
+                            trailSettings.mode === 'temporary'
+                                ? "bg-accent text-accent-foreground border-accent"
+                                : "bg-surface text-muted-foreground border-border hover:text-white"
+                        )}
+                    >
+                        Temporary
+                    </button>
+                </div>
+
+                {trailSettings.mode === 'controllable' && (
+                    <div className="space-y-2">
+                        {trailSettings.controllablePaused ? (
+                            <div className="grid grid-cols-2 gap-2">
+                                <button
+                                    onClick={() => setTrailSettings({
+                                        controllablePaused: false,
+                                        breakNextSegment: trailSettings.display === 'segments'
+                                    })}
+                                    className="py-2 rounded text-[10px] font-bold uppercase border bg-accent text-accent-foreground border-accent hover:brightness-110 transition-colors"
+                                >
+                                    Continue (Jump)
+                                </button>
+                                <button
+                                    onClick={() => setTrailSettings({ controllablePaused: false, breakNextSegment: false })}
+                                    className="py-2 rounded text-[10px] font-bold uppercase border bg-surface text-muted-foreground border-border hover:text-white transition-colors"
+                                >
+                                    Continue (No Jump)
+                                </button>
+                            </div>
+                        ) : (
+                            <button
+                                onClick={() => setTrailSettings({ controllablePaused: true })}
+                                className="w-full py-2 rounded text-[10px] font-bold uppercase border bg-surface text-muted-foreground border-border hover:text-white transition-colors"
+                            >
+                                Stop
+                            </button>
+                        )}
+                        <button
+                            onClick={clearTrail}
+                            className="w-full py-2 rounded text-[10px] font-bold uppercase border border-destructive bg-destructive text-destructive-foreground hover:brightness-110 transition-colors"
+                        >
+                            Clear
+                        </button>
+                    </div>
+                )}
+
+                {trailSettings.mode === 'temporary' && (
+                    <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="number"
+                                min={1}
+                                value={trailSettings.tempLength}
+                                onChange={(e) => setTrailSettings({ tempLength: Number(e.target.value) || 1 })}
+                                className="w-20 bg-surface border border-border rounded px-2 py-1 text-xs focus:outline-none focus:border-accent"
+                            />
+                            <select
+                                value={trailSettings.tempUnit}
+                                onChange={(e) => setTrailSettings({ tempUnit: e.target.value as typeof trailSettings.tempUnit })}
+                                className="bg-surface border border-border text-xs rounded px-2 py-1 outline-none focus:border-accent"
+                            >
+                                <option value="updates">Updates</option>
+                                <option value="seconds">Seconds</option>
+                            </select>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground">
+                            Tail fades out as it ages until disappearing.
+                        </p>
+                    </div>
+                )}
+
+                <div className="space-y-1">
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase">Display</span>
+                    <div className="grid grid-cols-3 gap-2">
+                        {(['none', 'points', 'segments'] as const).map((mode) => (
+                            <button
+                                key={mode}
+                                onClick={() => setTrailSettings({ display: mode })}
+                                className={clsx(
+                                    "py-2 rounded text-[10px] font-bold uppercase border transition-colors",
+                                    trailSettings.display === mode
+                                        ? "bg-accent text-accent-foreground border-accent"
+                                        : "bg-surface text-muted-foreground border-border hover:text-white"
+                                )}
+                            >
+                                {mode}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="space-y-1">
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase">Color</span>
+                    <div className="flex items-center gap-2">
+                        <input
+                            type="color"
+                            value={trailSettings.color}
+                            onChange={(e) => setTrailSettings({ color: e.target.value })}
+                            className="h-8 w-12 cursor-pointer rounded border border-border bg-surface"
+                        />
+                        <span className="text-[10px] text-muted-foreground">{trailSettings.color}</span>
+                    </div>
+                </div>
             </div>
         </div>
     );

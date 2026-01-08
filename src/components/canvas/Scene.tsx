@@ -5,6 +5,7 @@ import { Robot } from './Robot';
 import { PlotBox } from './PlotBox';
 import { CameraManager } from './CameraManager';
 import { GeometryRenderer } from './GeometryRenderer';
+import { RobotTrail } from './RobotTrail';
 
 export const Scene = () => {
     const { showGrid } = useAppStore();
@@ -33,6 +34,7 @@ export const Scene = () => {
 
             {/* Entities */}
             <Robot />
+            <RobotTrail />
             <GeometryRenderer />
 
             {/* Background */}
