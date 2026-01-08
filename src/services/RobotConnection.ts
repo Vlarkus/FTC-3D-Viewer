@@ -10,6 +10,10 @@ export class RobotConnectionService {
         this.ip = ip;
     }
 
+    public setIp(ip: string) {
+        this.ip = ip;
+    }
+
     public connect() {
         this.updateStatus('connecting');
 
@@ -60,6 +64,8 @@ export class RobotConnectionService {
     }
 
     private handleTelemetry(message: any) {
+        if (useAppStore.getState().isPaused) return;
+
         // FTC Dashboard messages are usually objects with "type" and "data"
         // Telemetry is often in data.put or data.data.put
         let telemetryData: Record<string, any> = {};

@@ -58,6 +58,8 @@ interface AppState {
     connectionStatus: 'disconnected' | 'connecting' | 'connected' | 'error';
     setIpAddress: (ip: string) => void;
     setConnectionStatus: (status: 'disconnected' | 'connecting' | 'connected' | 'error') => void;
+    isPaused: boolean;
+    setPaused: (paused: boolean) => void;
 
     // View & Camera
     cameraMode: CameraMode;
@@ -91,6 +93,14 @@ interface AppState {
     loadGeometryConfig: (config: any[]) => void;
     isSidebarOpen: boolean;
     setSidebarOpen: (open: boolean) => void;
+
+    // Robot Visual Settings
+    robotSettings: {
+        showRobot: boolean;
+        showCoordinates: boolean;
+        showProjections: boolean;
+    };
+    setRobotSettings: (settings: Partial<AppState['robotSettings']>) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -99,6 +109,8 @@ export const useAppStore = create<AppState>((set) => ({
     connectionStatus: 'disconnected',
     setIpAddress: (ip) => set({ ipAddress: ip }),
     setConnectionStatus: (status) => set({ connectionStatus: status }),
+    isPaused: false,
+    setPaused: (paused) => set({ isPaused: paused }),
 
     // View
     cameraMode: 'orbit',
@@ -331,4 +343,14 @@ export const useAppStore = create<AppState>((set) => ({
     }),
     isSidebarOpen: window.innerWidth > 768,
     setSidebarOpen: (open) => set({ isSidebarOpen: open }),
+
+    // Robot Settings
+    robotSettings: {
+        showRobot: true,
+        showCoordinates: true,
+        showProjections: true,
+    },
+    setRobotSettings: (settings) => set((state) => ({
+        robotSettings: { ...state.robotSettings, ...settings }
+    })),
 }));

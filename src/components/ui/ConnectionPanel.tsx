@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { WifiOff, RefreshCw, Map, ArrowUp, ArrowDown } from 'lucide-react';
+import { WifiOff, RefreshCw, Map, ArrowUp, ArrowDown, X, Pause, Play } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import { RobotConnectionService } from '../../services/RobotConnection';
 import { MockRobotConnectionService } from '../../services/MockRobotConnection';
@@ -12,7 +12,9 @@ export const ConnectionPanel: React.FC = () => {
         setIpAddress,
         connectionStatus,
         telemetryMapping,
-        setTelemetryMapping
+        setTelemetryMapping,
+        isPaused,
+        setPaused
     } = useAppStore();
 
     const [service] = useState(() => new RobotConnectionService(ipAddress));
@@ -26,16 +28,24 @@ export const ConnectionPanel: React.FC = () => {
 
     useEffect(() => {
         if (connectionStatus === 'connected' || isDemo) {
-            const keys = Object.keys(telemetryStore.getState());
-            setAvailableKeys(keys);
+            const updateKeys = () => {
+                const keys = Object.keys(telemetryStore.getState());
+                setAvailableKeys(keys);
+            };
 
-            // Subscribe to live telemetry for out-of-range feedback
+            updateKeys();
+
+            // Subscribe to live telemetry for updates and values
             const unsubscribe = telemetryStore.subscribe(() => {
                 setLiveTelemetry(telemetryStore.getState());
+                // Occasionally update keys if new ones appear
+                if (Object.keys(telemetryStore.getState()).length !== availableKeys.length) {
+                    updateKeys();
+                }
             });
             return () => { unsubscribe(); };
         }
-    }, [connectionStatus, isDemo]);
+    }, [connectionStatus, isDemo, availableKeys.length]);
 
     // Helper to check range direction
     const getRangeDirection = (key: string) => {
@@ -60,6 +70,16 @@ export const ConnectionPanel: React.FC = () => {
     };
 
     const handleConnect = () => {
+        if (connectionStatus === 'connecting') {
+            handleDisconnect();
+            return;
+        }
+
+        if (connectionStatus === 'connected' || isDemo) {
+            setPaused(!isPaused);
+            return;
+        }
+
         if (ipAddress.toLowerCase().trim() === 'demo') {
             handleDemo();
             return;
@@ -69,8 +89,14 @@ export const ConnectionPanel: React.FC = () => {
             mockService.disconnect();
             setIsDemo(false);
         }
-        const s = new RobotConnectionService(ipAddress);
-        s.connect();
+        service.setIp(ipAddress);
+        service.connect();
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') {
+            handleConnect();
+        }
     };
 
     const handleDemo = () => {
@@ -82,6 +108,7 @@ export const ConnectionPanel: React.FC = () => {
     };
 
     const handleDisconnect = () => {
+        setPaused(false);
         if (isDemo) {
             mockService.disconnect();
             setIsDemo(false);
@@ -109,15 +136,37 @@ export const ConnectionPanel: React.FC = () => {
                         type="text"
                         value={ipAddress}
                         onChange={(e) => setIpAddress(e.target.value)}
+                        onKeyDown={handleKeyDown}
                         placeholder="Enter IP or 'demo'"
-                        className="flex-1 bg-background border border-border rounded px-3 py-2 text-sm focus:outline-none focus:border-accent placeholder:text-muted-foreground/50"
+                        disabled={connectionStatus === 'connected' || isDemo}
+                        className={clsx(
+                            "flex-1 bg-background border border-border rounded px-3 py-2 text-sm focus:outline-none focus:border-accent placeholder:text-muted-foreground/50 transition-all",
+                            (connectionStatus === 'connected' || isDemo) && "opacity-50 cursor-not-allowed bg-secondary/20"
+                        )}
                     />
                     <button
                         onClick={handleConnect}
-                        className="bg-accent text-accent-foreground p-2 rounded hover:brightness-110 transition-all"
-                        title="Connect"
+                        className={clsx(
+                            "p-2 rounded transition-all shadow-lg flex items-center justify-center",
+                            connectionStatus === 'connecting'
+                                ? "bg-destructive text-destructive-foreground hover:brightness-110"
+                                : "bg-accent text-accent-foreground hover:brightness-110"
+                        )}
+                        title={
+                            connectionStatus === 'connecting'
+                                ? "Stop Connecting"
+                                : (connectionStatus === 'connected' || isDemo)
+                                    ? (isPaused ? "Resume Display" : "Pause Display")
+                                    : "Connect"
+                        }
                     >
-                        <RefreshCw size={18} />
+                        {connectionStatus === 'connecting' ? (
+                            <X size={18} />
+                        ) : (connectionStatus === 'connected' || isDemo) ? (
+                            isPaused ? <Play size={18} /> : <Pause size={18} />
+                        ) : (
+                            <RefreshCw size={18} />
+                        )}
                     </button>
                     {(connectionStatus === 'connected' || isDemo) && (
                         <button
@@ -207,10 +256,15 @@ export const ConnectionPanel: React.FC = () => {
                                     </div>
 
                                     <span className={clsx(
-                                        "font-mono truncate flex-1",
+                                        "font-mono truncate flex-1 flex justify-between gap-4",
                                         direction ? "text-red-300 font-bold" : "text-muted-foreground"
                                     )}>
-                                        {key}
+                                        <span>{key}</span>
+                                        <span className="text-accent font-bold">
+                                            {typeof liveTelemetry[key] === 'number'
+                                                ? liveTelemetry[key].toFixed(2)
+                                                : String(liveTelemetry[key] ?? '')}
+                                        </span>
                                     </span>
                                 </div>
                             );

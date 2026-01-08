@@ -2,6 +2,7 @@ import { ConnectionPanel } from './ConnectionPanel';
 import { GeometryExplorer } from './GeometryExplorer';
 import { CameraPanel } from './CameraPanel';
 import { GridPanel } from './GridPanel';
+import { RobotSettingsPanel } from './RobotSettingsPanel';
 import { useAppStore } from '../../store/useAppStore';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -60,6 +61,11 @@ export const Sidebar = () => {
                     <section>
                         <h2 className="text-xs font-bold text-muted-foreground uppercase mb-4">Plot Settings</h2>
                         <GridPanel />
+                    </section>
+
+                    <section>
+                        <h2 className="text-xs font-bold text-muted-foreground uppercase mb-4">Robot Visuals</h2>
+                        <RobotSettingsPanel />
                     </section>
 
                     <section>

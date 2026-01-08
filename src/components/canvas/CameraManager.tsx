@@ -1,48 +1,24 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useMemo } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, PointerLockControls } from '@react-three/drei';
 import { useAppStore } from '../../store/useAppStore';
 import { telemetryStore } from '../../store/telemetryStore';
+import { useCoordinateMapper } from '../../hooks/useCoordinateMapper';
 import * as THREE from 'three';
 
 export const CameraManager = () => {
     const { cameraMode, orbitTarget, cameraSpeed } = useAppStore();
     const orbitRef = useRef<any>(null);
     const { camera } = useThree();
+    const { mapPoint } = useCoordinateMapper();
 
     // Movement State
     const keys = useRef<{ [key: string]: boolean }>({});
 
+    // For smooth transitions
+    const desiredTarget = useMemo(() => new THREE.Vector3(0, 0, 0), []);
+
     // Keyboard Listeners
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            // Prevent scrolling with Space/Arrow keys if in free mode (and assumed locked)
-            // We check if keys.current is relevant or just generally prevent default for movement keys
-            if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.code)) {
-
-                // Only if we are in free mode... but useEffect closure has stale state?
-                // We need to use a ref or check the store closer. 
-                // Or just rely on the fact that if we are focused on canvas, we probably want to prevent default.
-                // But better: check valid keys.
-                // We'll trust that blocking these keys globally when this component is mounted is okay? 
-                // No, CameraManager is always mounted. We must check mode.
-                // We can't access 'cameraMode' from prop in this effect without re-binding.
-                // Ideally we bind handlers in useFrame or check a Ref for mode.
-                e.preventDefault();
-            }
-            keys.current[e.code] = true;
-        };
-        const handleKeyUp = (e: KeyboardEvent) => { keys.current[e.code] = false; };
-
-        window.addEventListener('keydown', handleKeyDown);
-        window.addEventListener('keyup', handleKeyUp);
-        return () => {
-            window.removeEventListener('keydown', handleKeyDown);
-            window.removeEventListener('keyup', handleKeyUp);
-        };
-    }, []); // Empty dep array -> one time bind. BUT we need mode check.
-
-    // Actually, let's re-bind or use a Ref for mode.
     const modeRef = useRef(cameraMode);
     useEffect(() => { modeRef.current = cameraMode; }, [cameraMode]);
 
@@ -67,13 +43,20 @@ export const CameraManager = () => {
 
     useFrame((_, delta) => {
         // Handle Orbit Tracking
-        if (cameraMode === 'orbit' && orbitTarget === 'robot' && orbitRef.current) {
-            const { x, y, z } = telemetryStore.getState();
-            // Assuming direct mapping for now as per previous logic
-            orbitRef.current.target.set(x, z, y);
-            orbitRef.current.update();
-        } else if (cameraMode === 'orbit' && orbitTarget === 'origin' && orbitRef.current) {
-            orbitRef.current.target.set(0, 0, 0);
+        if (cameraMode === 'orbit' && orbitRef.current) {
+            if (orbitTarget === 'robot') {
+                const { x, y, z } = telemetryStore.getState();
+                const [vx, vy, vz] = mapPoint(x, y, z);
+                desiredTarget.set(vx, vy, vz);
+            } else {
+                desiredTarget.set(0, 0, 0);
+            }
+
+            // Smoothly move the target
+            // Using a factor that feels good (higher = snappier, lower = smoother)
+            const smoothingFactor = delta * 10;
+            const factor = Math.min(1, smoothingFactor);
+            orbitRef.current.target.lerp(desiredTarget, factor);
             orbitRef.current.update();
         }
 
@@ -92,15 +75,12 @@ export const CameraManager = () => {
         }
     });
 
-    // Reset camera when switching modes
+    // Handle Mode Switches
     useEffect(() => {
-        if (cameraMode === 'free') {
-            // Optional: Start at a reasonable position if needed, or keep current
-        } else {
-            // Force unlock when leaving free mode
+        if (cameraMode !== 'free') {
             document.exitPointerLock();
         }
-    }, [cameraMode, camera]);
+    }, [cameraMode]);
 
     // Speed Control (Scroll Wheel)
     useEffect(() => {

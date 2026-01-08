@@ -31,6 +31,7 @@ export class MockRobotConnectionService {
 
         // Simulation loop @ ~20Hz (50ms)
         this.updateInterval = window.setInterval(() => {
+            if (useAppStore.getState().isPaused) return;
             this.stepSimulation();
             telemetryStore.setState(this.state);
         }, 50);
