@@ -40,6 +40,8 @@ jobs:
         run: npm install
       - name: Build
         run: npm run build
+      - name: Add CNAME
+        run: echo 'ftc3dview.vlarkus.com' > ./dist/CNAME
       - name: Setup Pages
         uses: actions/configure-pages@v4
       - name: Upload artifact
