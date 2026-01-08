@@ -78,6 +78,10 @@ interface AppState {
     entities: Record<string, GeometryEntity>;
     rootGroupIds: string[];
 
+    // Telemetry Mapping
+    telemetryMapping: { x?: string; y?: string; z?: string };
+    setTelemetryMapping: (axis: 'x' | 'y' | 'z', key: string | undefined) => void;
+
     // Actions
     addGroup: (group: Omit<GeometryGroup, 'childrenGroups' | 'childrenEntities'>) => void;
     addEntity: (entity: GeometryEntity) => void;
@@ -117,6 +121,19 @@ export const useAppStore = create<AppState>((set) => ({
         return {
             axes: { ...state.axes, [axis]: newSettings }
         };
+    }),
+
+    // Telemetry Mapping
+    telemetryMapping: { x: 'x', y: 'y', z: 'z' },
+    setTelemetryMapping: (axis, key) => set((state) => {
+        const newMapping = { ...state.telemetryMapping, [axis]: key };
+        // Ensure exclusivity: if this key was used elsewhere, remove it
+        if (key) {
+            if (axis !== 'x' && state.telemetryMapping.x === key) newMapping.x = undefined;
+            if (axis !== 'y' && state.telemetryMapping.y === key) newMapping.y = undefined;
+            if (axis !== 'z' && state.telemetryMapping.z === key) newMapping.z = undefined;
+        }
+        return { telemetryMapping: newMapping };
     }),
 
     // Geometry (initialized empty, loaded from config)
@@ -199,7 +216,7 @@ export const useAppStore = create<AppState>((set) => ({
         return { entities: remainingEntities };
     }),
 
-    loadGeometryConfig: (config) => set((state) => {
+    loadGeometryConfig: (config) => set(() => {
         const newGroups: Record<string, GeometryGroup> = {};
         const newEntities: Record<string, GeometryEntity> = {};
         const newRootGroupIds: string[] = [];

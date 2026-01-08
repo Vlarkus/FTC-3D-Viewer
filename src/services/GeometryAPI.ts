@@ -1,4 +1,4 @@
-import { useAppStore, type GeometryEntity, type GeometryGroup, type CoordinateSpace, type PointShape, type LineStyle } from '../store/useAppStore';
+import { useAppStore, type GeometryEntity, type CoordinateSpace, type PointShape, type LineStyle } from '../store/useAppStore';
 import { v4 as uuidv4 } from 'uuid';
 
 export interface StyleOptions {

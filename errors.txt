@@ -1,0 +1,4 @@
+﻿src/components/canvas/GeometryRenderer.tsx(2,49): error TS6133: 'GeometryGroup' is declared but its value is never read.
+src/components/canvas/GeometryRenderer.tsx(181,33): error TS6133: 'v' is declared but its value is never read.
+src/components/canvas/GeometryRenderer.tsx(182,22): error TS6133: 'u' is declared but its value is never read.
+src/components/canvas/PlotBox.tsx(1,1): error TS6133: 'useRef' is declared but its value is never read.

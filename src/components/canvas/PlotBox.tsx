@@ -1,7 +1,5 @@
-import { useRef } from 'react';
 import { Text, Edges, Grid } from '@react-three/drei';
 import { useAppStore } from '../../store/useAppStore';
-import * as THREE from 'three';
 
 export const PlotBox = () => {
     const { axes } = useAppStore();
@@ -11,7 +9,7 @@ export const PlotBox = () => {
     const zSize = axes.z.size;
 
     const { max: xMax, min: xMin, step: xStep } = axes.x;
-    const { max: yMax, min: yMin, step: yStep } = axes.y;
+    const { step: yStep } = axes.y;
     const { max: zMax, min: zMin, step: zStep } = axes.z;
 
     // Calculate Grid Props
@@ -34,7 +32,6 @@ export const PlotBox = () => {
     };
 
     const xConfig = getGridConfig(xSize, xMin, xMax, xStep);
-    const yConfig = getGridConfig(ySize, yMin, yMax, yStep);
     const zConfig = getGridConfig(zSize, zMin, zMax, zStep);
 
     // Common Grid Props

@@ -12,6 +12,10 @@ export interface RobotState {
     roll: number;
     pitch: number;
     heading: number;
+    flywheelVelocity: number;
+    deflectorAngle: number;
+    yawControl: number;
+    distanceToTarget: number;
 }
 
 const initialState: RobotState = {
@@ -21,6 +25,10 @@ const initialState: RobotState = {
     roll: 0,
     pitch: 0,
     heading: 0,
+    flywheelVelocity: 0,
+    deflectorAngle: 0,
+    yawControl: 0,
+    distanceToTarget: 0,
 };
 
 let currentState: RobotState = { ...initialState };

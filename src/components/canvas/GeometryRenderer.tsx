@@ -1,6 +1,6 @@
 import React from 'react';
-import { useAppStore, type GeometryEntity, type GeometryGroup, type CoordinateSpace, type PointShape } from '../../store/useAppStore';
-import { Line, Sphere, Box, Cone, Plane } from '@react-three/drei';
+import { useAppStore, type GeometryEntity, type CoordinateSpace, type PointShape } from '../../store/useAppStore';
+import { Line, Sphere, Box, Cone } from '@react-three/drei';
 import * as THREE from 'three';
 // import { useCoordinateMapper } from '../../hooks/useCoordinateMapper'; // We'd need to extract this logic if we want to reuse it easily
 
@@ -178,8 +178,8 @@ const ParametricRenderer = ({ entity }: { entity: GeometryEntity }) => {
         // Parse equations
         if (typeof equation === 'string') {
             // Old support: z = f(x,y). Mapping u->x, v->y for simplicity
-            funcX = (u: number, v: number) => u;
-            funcY = (u: number, v: number) => v; // Data Y
+            funcX = (u: number, _v: number) => u;
+            funcY = (_u: number, v: number) => v; // Data Y
             funcZ = new Function('x', 'y', `try { return ${equation}; } catch(e) { return 0; }`);
         } else {
             // Full parametric { x, y, z }

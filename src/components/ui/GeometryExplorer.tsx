@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
-import { ChevronRight, ChevronDown, Eye, EyeOff, Folder, Box, GripHorizontal, FileDigit, Plus } from 'lucide-react';
+import { ChevronRight, ChevronDown, Eye, EyeOff, Folder, Box, GripHorizontal, FileDigit } from 'lucide-react';
 import clsx from 'clsx';
 
 const TypeIcon = ({ type }: { type: string }) => {

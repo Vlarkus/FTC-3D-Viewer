@@ -3,18 +3,25 @@ import { useFrame } from '@react-three/fiber';
 import { Mesh } from 'three';
 import { telemetryStore } from '../../store/telemetryStore';
 import { useCoordinateMapper } from '../../hooks/useCoordinateMapper';
+import { useAppStore } from '../../store/useAppStore';
 
 export const Robot = () => {
     const meshRef = useRef<Mesh>(null);
-    const { mapPoint } = useCoordinateMapper(); // New hook for scaling
+    const { mapPoint } = useCoordinateMapper();
+    const telemetryMapping = useAppStore(state => state.telemetryMapping);
 
     useFrame(() => {
         if (!meshRef.current) return;
 
-        // Transient update
-        const { x, y, z, heading } = telemetryStore.getState();
+        const rawData = telemetryStore.getState() as any;
 
-        // New: Map data coordinates to visual coordinates
+        // Resolve coordinates based on mapping
+        const x = telemetryMapping.x ? (rawData[telemetryMapping.x] ?? 0) : 0;
+        const y = telemetryMapping.y ? (rawData[telemetryMapping.y] ?? 0) : 0;
+        const z = telemetryMapping.z ? (rawData[telemetryMapping.z] ?? 0) : 0;
+        const heading = rawData.heading ?? 0;
+
+        // Map data coordinates to visual coordinates
         const [vx, vy, vz] = mapPoint(x, y, z);
 
         // Update Position
@@ -26,11 +33,11 @@ export const Robot = () => {
 
     return (
         <mesh ref={meshRef} castShadow>
-            <boxGeometry args={[0.45, 0.45, 0.45]} /> {/* 18 inch robot approx 0.45m */}
-            <meshStandardMaterial color="#8844ff" />
-            {/* Direction indicator */}
-            <mesh position={[0.2, 0, 0]}>
-                <boxGeometry args={[0.2, 0.1, 0.1]} />
+            <sphereGeometry args={[0.2, 32, 32]} />
+            <meshStandardMaterial color="#800000" />
+            {/* Direction indicator (small box) */}
+            <mesh position={[0.15, 0, 0]}>
+                <boxGeometry args={[0.1, 0.05, 0.05]} />
                 <meshStandardMaterial color="white" />
             </mesh>
         </mesh>
