@@ -16,6 +16,7 @@ export interface RobotState {
     deflectorAngle: number;
     yawControl: number;
     distanceToTarget: number;
+    [key: string]: any;
 }
 
 const initialState: RobotState = {

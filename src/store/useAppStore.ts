@@ -89,6 +89,8 @@ interface AppState {
     removeGroup: (id: string) => void;
     removeEntity: (id: string) => void;
     loadGeometryConfig: (config: any[]) => void;
+    isSidebarOpen: boolean;
+    setSidebarOpen: (open: boolean) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -327,4 +329,6 @@ export const useAppStore = create<AppState>((set) => ({
             rootGroupIds: newRootGroupIds
         };
     }),
+    isSidebarOpen: window.innerWidth > 768,
+    setSidebarOpen: (open) => set({ isSidebarOpen: open }),
 }));

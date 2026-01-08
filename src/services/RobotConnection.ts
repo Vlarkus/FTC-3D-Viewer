@@ -59,16 +59,38 @@ export class RobotConnectionService {
         this.updateStatus('disconnected');
     }
 
-    private handleTelemetry(data: any) {
-        // Expecting data in structure roughly equivalent to what we need
-        // This mapping might need to be configurable in UI later
-        const x = typeof data.x === 'number' ? data.x : 0;
-        const y = typeof data.y === 'number' ? data.y : 0;
-        const z = typeof data.z === 'number' ? data.z : 0;
-        const heading = typeof data.heading === 'number' ? data.heading : 0;
+    private handleTelemetry(message: any) {
+        // FTC Dashboard messages are usually objects with "type" and "data"
+        // Telemetry is often in data.put or data.data.put
+        let telemetryData: Record<string, any> = {};
 
-        // Transient update - no React render trigger!
-        telemetryStore.setState({ x, y, z, heading });
+        if (message.type === 'telemetry' && message.data) {
+            // Standard Dashboard packet
+            telemetryData = message.data.put || {};
+        } else if (message.put) {
+            // Raw packet data
+            telemetryData = message.put;
+        } else {
+            // Fallback: use top level if it's a flat object (like the old mock)
+            telemetryData = message;
+        }
+
+        const updates: Partial<any> = {};
+
+        // Parse and clean keys
+        for (const [key, value] of Object.entries(telemetryData)) {
+            // Attempt to convert numeric strings to actual numbers for mapping
+            if (typeof value === 'string' && !isNaN(parseFloat(value))) {
+                updates[key] = parseFloat(value);
+            } else {
+                updates[key] = value;
+            }
+        }
+
+        // Apply state update
+        if (Object.keys(updates).length > 0) {
+            telemetryStore.setState(updates);
+        }
     }
 
     private updateStatus(status: 'disconnected' | 'connecting' | 'connected' | 'error') {
