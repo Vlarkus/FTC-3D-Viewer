@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAppStore } from '../../store/useAppStore';
-import { ChevronRight, ChevronDown, Eye, EyeOff, Folder, Box, GripHorizontal, FileDigit, ArrowUp, ArrowDown, FolderPlus, Trash2, AlertTriangle, X, Menu, GripVertical } from 'lucide-react';
+import { ChevronRight, ChevronDown, Eye, EyeOff, Folder, Box, GripHorizontal, FileDigit, ArrowUp, ArrowDown, FolderPlus, Trash2, AlertTriangle, X, GripVertical } from 'lucide-react';
 import clsx from 'clsx';
 import type { DragEndEvent } from '@dnd-kit/core';
 import {
@@ -317,7 +317,6 @@ const EntityItem = ({
     return (
         <div
             ref={setNodeRef}
-            style={style}
             onClick={() => onSelect(isSelected ? null : entityId)}
             className={clsx(
                 "flex items-center gap-2 p-1.5 hover:bg-surface-highlight rounded cursor-pointer group text-xs select-none transition-all",

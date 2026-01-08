@@ -46,7 +46,7 @@ export const GeometryTrailPanel = () => {
         setTrailSettings({ mode });
     };
 
-    const setDisplay = (display: 'hidden' | 'points' | 'segments') => {
+    const setDisplay = (display: 'none' | 'points' | 'segments') => {
         setTrailSettings({ display });
     };
 
@@ -85,16 +85,16 @@ export const GeometryTrailPanel = () => {
             {isControllable ? (
                 <div className="flex gap-2">
                     <button
-                        onClick={() => setTrailSettings({ controllableActive: !trailSettings.controllableActive })}
+                        onClick={() => setTrailSettings({ controllablePaused: !trailSettings.controllablePaused })}
                         className={clsx(
                             'flex-1 px-2 py-1 rounded text-xs font-semibold transition-colors flex items-center justify-center gap-2',
-                            trailSettings.controllableActive
+                            trailSettings.controllablePaused
                                 ? 'bg-accent text-accent-foreground hover:brightness-110'
                                 : 'bg-surface/40 text-muted-foreground hover:text-white border border-border'
                         )}
                     >
-                        {trailSettings.controllableActive ? <Pause size={14} /> : <Play size={14} />}
-                        {trailSettings.controllableActive ? 'Stop' : 'Continue'}
+                        {trailSettings.controllablePaused ? <Play size={14} /> : <Pause size={14} />}
+                        {trailSettings.controllablePaused ? 'Continue' : 'Stop'}
                     </button>
                     <button
                         onClick={clearTrail}
@@ -109,15 +109,15 @@ export const GeometryTrailPanel = () => {
                     <div className="text-[10px] text-muted-foreground uppercase">Length</div>
                     <div className="flex items-center gap-2">
                         <NumberInput
-                            value={trailSettings.temporaryLength}
-                            onChange={(val) => setTrailSettings({ temporaryLength: Math.max(1, val) })}
+                            value={trailSettings.tempLength}
+                            onChange={(val) => setTrailSettings({ tempLength: Math.max(1, val) })}
                         />
                         <div className="flex gap-1">
                             <button
-                                onClick={() => setTrailSettings({ temporaryUnits: 'updates' })}
+                                onClick={() => setTrailSettings({ tempUnit: 'updates' })}
                                 className={clsx(
                                     'px-2 py-1 rounded border text-[10px] font-bold uppercase transition-colors',
-                                    trailSettings.temporaryUnits === 'updates'
+                                    trailSettings.tempUnit === 'updates'
                                         ? 'bg-accent/10 border-accent/50 text-accent-foreground'
                                         : 'bg-surface/30 border-border/50 text-muted-foreground hover:border-border'
                                 )}
@@ -125,10 +125,10 @@ export const GeometryTrailPanel = () => {
                                 Updates
                             </button>
                             <button
-                                onClick={() => setTrailSettings({ temporaryUnits: 'seconds' })}
+                                onClick={() => setTrailSettings({ tempUnit: 'seconds' })}
                                 className={clsx(
                                     'px-2 py-1 rounded border text-[10px] font-bold uppercase transition-colors',
-                                    trailSettings.temporaryUnits === 'seconds'
+                                    trailSettings.tempUnit === 'seconds'
                                         ? 'bg-accent/10 border-accent/50 text-accent-foreground'
                                         : 'bg-surface/30 border-border/50 text-muted-foreground hover:border-border'
                                 )}
@@ -144,15 +144,15 @@ export const GeometryTrailPanel = () => {
                 <div className="text-[10px] text-muted-foreground uppercase">Display</div>
                 <div className="grid grid-cols-3 gap-2">
                     <button
-                        onClick={() => setDisplay('hidden')}
+                        onClick={() => setDisplay('none')}
                         className={clsx(
                             'px-2 py-1 rounded border text-xs font-semibold transition-colors',
-                            trailSettings.display === 'hidden'
+                            trailSettings.display === 'none'
                                 ? 'bg-accent/10 border-accent/50 text-accent-foreground'
                                 : 'bg-surface/30 border-border/50 text-muted-foreground hover:border-border'
                         )}
                     >
-                        Hidden
+                        None
                     </button>
                     <button
                         onClick={() => setDisplay('points')}
