@@ -156,55 +156,97 @@ const LineRenderer = ({ entity }: { entity: GeometryEntity }) => {
     );
 };
 
+const PlaneRenderer = ({ entity }: { entity: GeometryEntity }) => {
+    if (!entity.visible) return null;
+    const { normal = [0, 0, 1], constant = 0, size = 10 } = entity.data;
+    const clippingPlanes = useClippingPlanes(!entity.visibleIfOutsideGraph);
+    const transform = useCoordinateTransform(entity.coordinateSpace);
+
+    // Visual Normal mapping: Data X,Y,Z -> Visual X,Z,Y
+    // Actually, let's treat normal as a vector in data space.
+    // E.g. Normal [0,0,1] means Z=Up in FTC coordinates.
+    // Visual Y is Up. So Visual Normal should be [0,1,0].
+
+    // For simplicity, let's assume Plane is a bounded square for now.
+    // We compute the center point if we had one? Plane doesn't usually have a center.
+    // But THREE.Plane is infinite. 
+    // To render it, we need a Mesh.
+
+    const [vx, vy, vz] = transform([0, 0, 0]); // Offset transform
+    // This is tricky because transform is non-linear (min-max).
+    // Let's assume for now Plane is world-space or simple.
+
+    // To orient the plane mesh along the normal, we can use lookAt or quaternion
+    // Standard Plane mesh is at [0,0,1] normal (facing +Z in ThreeJS)
+    const normVec = new THREE.Vector3(...normal).normalize();
+    // Visual axes: FTC UP (Z) is Visual UP (Y).
+    // If user enters normal [0,0,1], they mean UP. 
+    // We should map this normal too?
+    // Let's assume the user enters normal in DATA space.
+    const [vnx, vny, vnz] = [normVec.x, normVec.z, normVec.y]; // Data X,Y,Z -> Visual X,Z,Y (but Y is height)
+    const visualNormal = new THREE.Vector3(vnx, vny, vnz);
+
+    return (
+        <group position={[vx, vy, vz]}>
+            <mesh
+                onUpdate={(self) => self.lookAt(visualNormal.clone().add(self.position))}
+                position={[visualNormal.x * constant, visualNormal.y * constant, visualNormal.z * constant]}
+            >
+                <planeGeometry args={[size, size]} />
+                <meshStandardMaterial
+                    color={entity.color}
+                    transparent
+                    opacity={entity.opacity}
+                    side={THREE.DoubleSide}
+                    clippingPlanes={clippingPlanes}
+                />
+            </mesh>
+        </group>
+    );
+};
+
 const ParametricRenderer = ({ entity }: { entity: GeometryEntity }) => {
     if (!entity.visible) return null;
-    const { equation, domain } = entity.data; // equation is now { x, y, z } string or simple string
+    const { equation, domain } = entity.data;
     const clippingPlanes = useClippingPlanes(!entity.visibleIfOutsideGraph);
     const transform = useCoordinateTransform(entity.coordinateSpace);
     const axes = useAppStore(state => state.axes);
 
-    // Memoize geometry
     const geometry = React.useMemo(() => {
         const count = 50;
         const geom = new THREE.BufferGeometry();
         const positions = [];
         const indices = [];
-
         const uMin = domain.u[0], uMax = domain.u[1];
         const vMin = domain.v[0], vMax = domain.v[1];
 
         let funcX: Function, funcY: Function, funcZ: Function;
 
-        // Parse equations
+        const mathRegex = /\b(sin|cos|tan|asin|acos|atan|atan2|pow|exp|log|sqrt|abs|floor|ceil|round|min|max|PI|E|sqrt2)\b/g;
+        const prepare = (s: string) => s.replace(mathRegex, 'Math.$1');
+
         if (typeof equation === 'string') {
-            // Old support: z = f(x,y). Mapping u->x, v->y for simplicity
             funcX = (u: number, _v: number) => u;
-            funcY = (_u: number, v: number) => v; // Data Y
-            funcZ = new Function('x', 'y', `try { return ${equation}; } catch(e) { return 0; }`);
+            funcY = (_u: number, v: number) => v;
+            funcZ = new Function('x', 'y', `try { return ${prepare(equation)}; } catch(e) { return 0; }`);
         } else {
-            // Full parametric { x, y, z }
-            funcX = new Function('u', 'v', `try { return ${equation.x}; } catch(e) { return 0; }`);
-            funcY = new Function('u', 'v', `try { return ${equation.y}; } catch(e) { return 0; }`);
-            funcZ = new Function('u', 'v', `try { return ${equation.z}; } catch(e) { return 0; }`);
+            funcX = new Function('u', 'v', `try { return ${prepare(equation.x)}; } catch(e) { return 0; }`);
+            funcY = new Function('u', 'v', `try { return ${prepare(equation.y)}; } catch(e) { return 0; }`);
+            funcZ = new Function('u', 'v', `try { return ${prepare(equation.z)}; } catch(e) { return 0; }`);
         }
 
         for (let i = 0; i <= count; i++) {
             const u = uMin + (uMax - uMin) * (i / count);
             for (let j = 0; j <= count; j++) {
                 const v = vMin + (vMax - vMin) * (j / count);
-
-                // Eval Data Coordinates
                 const dx = funcX(u, v);
                 const dy = funcY(u, v);
                 const dz = funcZ(u, v);
-
-                // Apply coordinate transform (plot space -> visual space)
                 const [vx, vy, vz] = transform([dx, dy, dz]);
                 positions.push(vx, vy, vz);
             }
         }
 
-        // ... indices logic ... (same as before)
         for (let i = 0; i < count; i++) {
             for (let j = 0; j < count; j++) {
                 const a = i * (count + 1) + j;
@@ -222,13 +264,6 @@ const ParametricRenderer = ({ entity }: { entity: GeometryEntity }) => {
         return geom;
     }, [equation, domain, axes, transform]);
 
-    // To properly support transform, we should wrap the mess in a group and apply scale?
-    // But PlotBox scale is offset-based ((val - min) / range). It's not a simple scale.
-    // So we MUST compute vertex positions.
-    // I'll update the renderer to just output RAW [x, z, y] (ThreeJS standard orientation) 
-    // and rely on the entity.coordinateSpace = 'world' for now.
-    // Fixing 'plot' space for Parametric is complex without passing axes into useMemo.
-
     return (
         <mesh geometry={geometry}>
             <meshStandardMaterial
@@ -236,9 +271,7 @@ const ParametricRenderer = ({ entity }: { entity: GeometryEntity }) => {
                 transparent
                 opacity={entity.opacity}
                 side={THREE.DoubleSide}
-                wireframe={false}
                 clippingPlanes={clippingPlanes}
-                clipShadows
             />
         </mesh>
     );
@@ -271,17 +304,22 @@ const EntityDispatcher = ({ entityId, parentVisible }: { entityId: string, paren
         case 'point': return <PointRenderer entity={entity} />;
         case 'line': return <LineRenderer entity={entity} />;
         case 'parametric': return <ParametricRenderer entity={entity} />;
-        case 'plane': return null; // Deprecated or mapped to parametric
+        case 'plane': return <PlaneRenderer entity={entity} />;
         default: return null;
     }
 };
 
 export const GeometryRenderer = () => {
     const rootGroupIds = useAppStore(state => state.rootGroupIds);
+    const rootEntityIds = useAppStore(state => state.rootEntityIds);
+
     return (
         <group>
             {rootGroupIds.map(groupId => (
                 <GroupRenderer key={groupId} groupId={groupId} />
+            ))}
+            {rootEntityIds.map(entityId => (
+                <EntityDispatcher key={entityId} entityId={entityId} parentVisible={true} />
             ))}
         </group>
     );

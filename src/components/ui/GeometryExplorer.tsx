@@ -121,7 +121,7 @@ const EntityItem = ({ entityId, depth }: { entityId: string, depth: number }) =>
 
 export const GeometryExplorer = () => {
     const rootGroupIds = useAppStore(state => state.rootGroupIds);
-    // We could add a way to Create Root Group here
+    const rootEntityIds = useAppStore(state => state.rootEntityIds);
 
     return (
         <div className="space-y-2">
@@ -131,15 +131,18 @@ export const GeometryExplorer = () => {
 
             <div className="border border-border rounded bg-background/50 min-h-[200px] overflow-hidden">
                 <div className="p-1 space-y-0.5">
-                    {rootGroupIds.length === 0 && (
+                    {rootGroupIds.length === 0 && rootEntityIds.length === 0 && (
                         <div className="p-4 text-center text-xs text-muted-foreground">
                             No geometry loaded.
                             <br />
-                            Add groups via API or scripts.
+                            Add via tools or scripts.
                         </div>
                     )}
                     {rootGroupIds.map(gid => (
                         <GroupItem key={gid} groupId={gid} />
+                    ))}
+                    {rootEntityIds.map(eid => (
+                        <EntityItem key={eid} entityId={eid} depth={0} />
                     ))}
                 </div>
             </div>

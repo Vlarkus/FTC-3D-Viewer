@@ -3,6 +3,7 @@ import { GeometryExplorer } from './GeometryExplorer';
 import { CameraPanel } from './CameraPanel';
 import { GridPanel } from './GridPanel';
 import { RobotSettingsPanel } from './RobotSettingsPanel';
+import { AddGeometryPanel } from './AddGeometryPanel';
 import { useAppStore } from '../../store/useAppStore';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -69,8 +70,11 @@ export const Sidebar = () => {
                     </section>
 
                     <section>
-                        <h2 className="text-xs font-bold text-muted-foreground uppercase mb-4">Geometry</h2>
-                        <GeometryExplorer />
+                        <h2 className="text-xs font-bold text-muted-foreground uppercase mb-4">Geometry Tools</h2>
+                        <div className="space-y-6">
+                            <AddGeometryPanel />
+                            <GeometryExplorer />
+                        </div>
                     </section>
                 </div>
             </div>

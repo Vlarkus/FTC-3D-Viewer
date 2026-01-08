@@ -37,10 +37,9 @@ export interface GeometryEntity {
     // line: { start: [x,y,z], end: [x,y,z], thickness: number, style: LineStyle, dashSize?: number, gapSize?: number }
     // parametric: { 
     //    equation: { x: string, y: string, z: string }, // Full parametric [x(u,v), y(u,v), z(u,v)]
-    //    domain: { u: [min, max], v: [min, max] },
-    //    colorMap?: string, // 'viridis', etc.
-    //    colorMetric?: string // 'z' or function string
+    //    domain: { u: [min, max], v: [min, max] }
     // }
+    // plane: { normal: [x,y,z], constant: number, size: number } 
 }
 
 export interface GeometryGroup {
@@ -79,6 +78,7 @@ interface AppState {
     groups: Record<string, GeometryGroup>;
     entities: Record<string, GeometryEntity>;
     rootGroupIds: string[];
+    rootEntityIds: string[];
 
     // Telemetry Mapping
     telemetryMapping: { x?: string; y?: string; z?: string };
@@ -154,6 +154,7 @@ export const useAppStore = create<AppState>((set) => ({
     groups: {},
     entities: {},
     rootGroupIds: [],
+    rootEntityIds: [],
 
     addGroup: (group) => set((state) => {
         const newGroup: GeometryGroup = { ...group, childrenGroups: [], childrenEntities: [] };
@@ -180,7 +181,6 @@ export const useAppStore = create<AppState>((set) => ({
     }),
 
     addEntity: (entity) => set((state) => {
-        // Ensure V2 defaults if missing
         const safeEntity = {
             ...entity,
             opacity: entity.opacity ?? 1.0,
@@ -203,8 +203,12 @@ export const useAppStore = create<AppState>((set) => ({
                     }
                 }
             };
+        } else {
+            return {
+                entities: newState.entities,
+                rootEntityIds: [...state.rootEntityIds, entity.id]
+            };
         }
-        return newState;
     }),
 
     toggleVisibility: (id, isGroup) => set((state) => {
@@ -322,6 +326,23 @@ export const useAppStore = create<AppState>((set) => ({
                             domain: item.domain
                         }
                     };
+                } else if (item.type === 'plane') {
+                    entity = {
+                        id,
+                        name: item.name,
+                        type: 'plane',
+                        parentId,
+                        visible: true,
+                        color: item.options.color || 'white',
+                        opacity: item.options.opacity ?? 0.5,
+                        coordinateSpace: item.options.coordinateSpace || 'plot',
+                        visibleIfOutsideGraph: item.options.visibleIfOutsideGraph ?? true,
+                        data: {
+                            normal: item.normal,
+                            constant: item.constant ?? 0,
+                            size: item.options.size ?? 20
+                        }
+                    };
                 } else {
                     throw new Error(`Unknown entity type: ${item.type}`);
                 }
@@ -338,7 +359,8 @@ export const useAppStore = create<AppState>((set) => ({
         return {
             groups: newGroups,
             entities: newEntities,
-            rootGroupIds: newRootGroupIds
+            rootGroupIds: newRootGroupIds,
+            rootEntityIds: [] // Config based geometry always uses groups for now
         };
     }),
     isSidebarOpen: window.innerWidth > 768,
