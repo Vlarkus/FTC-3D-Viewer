@@ -1,5 +1,9 @@
 # FTC 3D Viewer (V2)
 
+## NOTE!!!!!
+
+This project is currently not fully functional. Consider this as a demo of the planned version.
+
 **A High-Performance Visual Debugging Environment for FTC Robotics.**
 
 ## Overview
