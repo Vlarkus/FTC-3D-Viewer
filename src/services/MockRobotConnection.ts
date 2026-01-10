@@ -3,7 +3,7 @@ import { telemetryStore, type RobotState } from "../store/telemetryStore";
 
 export class MockRobotConnectionService {
     private updateInterval: number | null = null;
-    private state: RobotState = {
+    private state: Required<Pick<RobotState, 'x' | 'y' | 'z' | 'roll' | 'pitch' | 'heading' | 'flywheelVelocity' | 'deflectorAngle' | 'yawControl' | 'distanceToTarget'>> = {
         x: 0,
         y: 0,
         z: 0,
