@@ -5,6 +5,9 @@ export class RobotConnectionService {
     private ws: WebSocket | null = null;
     private pollInterval: number | null = null;
     private ip: string;
+    private readonly pollMs = 100;
+    private readonly maxConsecutiveFailures = 30;
+    private readonly port = 12345;
 
     constructor(ip: string) {
         this.ip = ip;
@@ -17,38 +20,7 @@ export class RobotConnectionService {
     public connect() {
         this.updateStatus('connecting');
 
-        // Attempt WebSocket first (common for dashboards)
-        try {
-            this.ws = new WebSocket(`ws://${this.ip}:8000/dashboard`);
-
-            this.ws.onopen = () => {
-                this.updateStatus('connected');
-            };
-
-            this.ws.onmessage = (event) => {
-                try {
-                    const data = JSON.parse(event.data);
-                    this.handleTelemetry(data);
-                } catch (e) {
-                    console.error("Failed to parse telemetry", e);
-                }
-            };
-
-            this.ws.onclose = () => {
-                this.updateStatus('disconnected');
-                this.ws = null;
-                // Fallback or retry logic could go here
-            };
-
-            this.ws.onerror = (err) => {
-                console.warn("WebSocket failed, connection error", err);
-                this.updateStatus('error');
-            };
-
-        } catch (e) {
-            console.error("Connection attempt failed", e);
-            this.updateStatus('error');
-        }
+        this.startPolling();
     }
 
     public disconnect() {
@@ -61,6 +33,45 @@ export class RobotConnectionService {
             this.pollInterval = null;
         }
         this.updateStatus('disconnected');
+    }
+
+    private startPolling() {
+        if (this.pollInterval) {
+            clearInterval(this.pollInterval);
+        }
+
+        const baseUrl = `http://${this.ip}:${this.port}`;
+        let seenConnected = false;
+        let failureCount = 0;
+
+        const pollOnce = async () => {
+            try {
+                const response = await fetch(`${baseUrl}/telemetry`, { cache: "no-store" });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const data = await response.json();
+                this.handleTelemetry(data);
+
+                failureCount = 0;
+                if (!seenConnected) {
+                    seenConnected = true;
+                    this.updateStatus('connected');
+                }
+            } catch (e) {
+                failureCount += 1;
+                if (seenConnected) {
+                    this.updateStatus('disconnected');
+                } else {
+                    this.updateStatus('error');
+                }
+                if (failureCount >= this.maxConsecutiveFailures && this.pollInterval) {
+                    clearInterval(this.pollInterval);
+                    this.pollInterval = null;
+                }
+            }
+        };
+
+        pollOnce();
+        this.pollInterval = window.setInterval(pollOnce, this.pollMs);
     }
 
     private handleTelemetry(message: any) {
@@ -85,11 +96,12 @@ export class RobotConnectionService {
 
         // Parse and clean keys
         for (const [key, value] of Object.entries(telemetryData)) {
+            const normalizedKey = key.startsWith("robot.") ? key.slice("robot.".length) : key;
             // Attempt to convert numeric strings to actual numbers for mapping
             if (typeof value === 'string' && !isNaN(parseFloat(value))) {
-                updates[key] = parseFloat(value);
+                updates[normalizedKey] = parseFloat(value);
             } else {
-                updates[key] = value;
+                updates[normalizedKey] = value;
             }
         }
 

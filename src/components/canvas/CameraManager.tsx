@@ -46,7 +46,7 @@ export const CameraManager = () => {
         if (cameraMode === 'orbit' && orbitRef.current) {
             if (orbitTarget === 'robot') {
                 const { x, y, z } = telemetryStore.getState();
-                const [vx, vy, vz] = mapPoint(x, y, z);
+                const [vx, vy, vz] = mapPoint(x ?? 0, y ?? 0, z ?? 0);
                 desiredTarget.set(vx, vy, vz);
             } else {
                 desiredTarget.set(0, 0, 0);

@@ -88,8 +88,10 @@ export const ConnectionPanel: React.FC = () => {
         if (isDemo) {
             mockService.disconnect();
             setIsDemo(false);
+            telemetryStore.reset();
         }
         service.setIp(ipAddress);
+        telemetryStore.reset();
         service.connect();
     };
 
@@ -103,6 +105,7 @@ export const ConnectionPanel: React.FC = () => {
         if (connectionStatus === 'connected' && !isDemo) {
             service.disconnect();
         }
+        telemetryStore.reset();
         mockService.connect();
         setIsDemo(true);
     };
@@ -115,6 +118,7 @@ export const ConnectionPanel: React.FC = () => {
         } else {
             service.disconnect();
         }
+        telemetryStore.reset();
     };
 
     return (

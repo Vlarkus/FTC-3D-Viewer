@@ -6,31 +6,20 @@
  */
 
 export interface RobotState {
-    x: number;
-    y: number;
-    z: number;
-    roll: number;
-    pitch: number;
-    heading: number;
-    flywheelVelocity: number;
-    deflectorAngle: number;
-    yawControl: number;
-    distanceToTarget: number;
+    x?: number;
+    y?: number;
+    z?: number;
+    roll?: number;
+    pitch?: number;
+    heading?: number;
+    flywheelVelocity?: number;
+    deflectorAngle?: number;
+    yawControl?: number;
+    distanceToTarget?: number;
     [key: string]: any;
 }
 
-const initialState: RobotState = {
-    x: 0,
-    y: 0,
-    z: 0,
-    roll: 0,
-    pitch: 0,
-    heading: 0,
-    flywheelVelocity: 0,
-    deflectorAngle: 0,
-    yawControl: 0,
-    distanceToTarget: 0,
-};
+const initialState: RobotState = {};
 
 let currentState: RobotState = { ...initialState };
 const listeners: Set<() => void> = new Set();
