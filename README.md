@@ -12,7 +12,7 @@ The application renders live telemetry as geometry in a 3D scene, enabling teams
 The viewer runs entirely in the browser and connects to a lightweight Java telemetry server running on the Robot Controller.
 
 **Live application:**  
-👉 https://ftc3dviewer.olarcus.com
+👉 https://ftc3dviewer.vlarkus.com
 
 ---
 
