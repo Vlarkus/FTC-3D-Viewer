@@ -11,8 +11,9 @@ The application renders live telemetry as geometry in a 3D scene, enabling teams
 
 The viewer runs entirely in the browser and connects to a lightweight Java telemetry server running on the Robot Controller.
 
-**Live application:**  
+**Live DEMO application:**  
 👉 https://ftc3dviewer.vlarkus.com
+Note: The web version CANNOT connect directly to a robot on the local Control Hub network because browsers block HTTPS pages from requesting data over the robot’s local HTTP endpoints. Use the locally hosted version for robot connectivity.
 
 ---
 
