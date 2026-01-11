@@ -9,9 +9,22 @@ export const AddGeometryPanel: React.FC = () => {
     const [name, setName] = useState('');
     const [color, setColor] = useState('#ff0000');
 
+    type BezierPoints = {
+        start: [number, number, number];
+        control1: [number, number, number];
+        control2: [number, number, number];
+        end: [number, number, number];
+    };
+
     // Type specific states
     const [pointPos, setPointPos] = useState({ x: 0, y: 0, z: 0 });
     const [linePoints, setLinePoints] = useState({ start: [0, 0, 0], end: [1, 1, 1] });
+    const [bezierPoints, setBezierPoints] = useState<BezierPoints>({
+        start: [0, 0, 0],
+        control1: [1, 0, 0],
+        control2: [2, 0, 0],
+        end: [3, 0, 0]
+    });
     const [parametric, setParametric] = useState({
         x: 'u', y: 'v', z: 'sin(u)*cos(v)',
         uMin: -5, uMax: 5, vMin: -5, vMax: 5
@@ -28,6 +41,16 @@ export const AddGeometryPanel: React.FC = () => {
                 break;
             case 'line':
                 entityData = { start: linePoints.start, end: linePoints.end, thickness: 2, style: 'solid' };
+                break;
+            case 'cubic-bezier':
+                entityData = {
+                    start: bezierPoints.start,
+                    control1: bezierPoints.control1,
+                    control2: bezierPoints.control2,
+                    end: bezierPoints.end,
+                    thickness: 2,
+                    style: 'solid'
+                };
                 break;
             case 'parametric':
                 entityData = {
@@ -68,6 +91,7 @@ export const AddGeometryPanel: React.FC = () => {
                     >
                         <option value="point">Point</option>
                         <option value="line">Segment</option>
+                        <option value="cubic-bezier">Cubic Bezier</option>
                         <option value="plane">Plane</option>
                         <option value="parametric">Parametric</option>
                     </select>
@@ -145,6 +169,36 @@ export const AddGeometryPanel: React.FC = () => {
                             />
                         ))}
                     </div>
+                </div>
+            )}
+
+            {type === 'cubic-bezier' && (
+                <div className="space-y-2">
+                    {([
+                        ['start', 'Start [x,y,z]'],
+                        ['control1', 'Control 1 [x,y,z]'],
+                        ['control2', 'Control 2 [x,y,z]'],
+                        ['end', 'End [x,y,z]']
+                    ] as const).map(([key, label]) => (
+                        <div key={key} className="grid grid-cols-3 gap-2">
+                            <label className="col-span-3 text-[10px] font-bold uppercase text-muted-foreground">{label}</label>
+                            {[0, 1, 2].map(i => (
+                                <input
+                                    key={i}
+                                    type="number"
+                                    value={bezierPoints[key][i]}
+                                    onChange={(e) => {
+                                        const next = { ...bezierPoints };
+                                        const values = [...next[key]] as [number, number, number];
+                                        values[i] = parseFloat(e.target.value) || 0;
+                                        next[key] = values;
+                                        setBezierPoints(next);
+                                    }}
+                                    className="w-full bg-surface border border-border rounded px-2 py-1 text-xs"
+                                />
+                            ))}
+                        </div>
+                    ))}
                 </div>
             )}
 

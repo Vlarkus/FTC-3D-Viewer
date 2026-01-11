@@ -156,6 +156,48 @@ const LineRenderer = ({ entity }: { entity: GeometryEntity }) => {
     );
 };
 
+const CubicBezierRenderer = ({ entity }: { entity: GeometryEntity }) => {
+    if (!entity.visible) return null;
+    const {
+        start,
+        control1,
+        control2,
+        end,
+        thickness = 2,
+        style = 'solid',
+        dashSize = 1,
+        gapSize = 0.5
+    } = entity.data;
+    const transform = useCoordinateTransform(entity.coordinateSpace);
+    const clippingPlanes = useClippingPlanes(!entity.visibleIfOutsideGraph);
+
+    const curvePoints = React.useMemo(() => {
+        const curve = new THREE.CubicBezierCurve3(
+            new THREE.Vector3(...transform(start)),
+            new THREE.Vector3(...transform(control1)),
+            new THREE.Vector3(...transform(control2)),
+            new THREE.Vector3(...transform(end))
+        );
+        return curve.getPoints(50);
+    }, [start, control1, control2, end, transform]);
+
+    return (
+        <Line
+            points={curvePoints}
+            color={entity.color}
+            lineWidth={thickness}
+            dashed={style === 'dashed'}
+            dashScale={1}
+            dashSize={dashSize}
+            gapSize={gapSize}
+            transparent
+            opacity={entity.opacity}
+            // @ts-ignore
+            clippingPlanes={clippingPlanes}
+        />
+    );
+};
+
 const PlaneRenderer = ({ entity }: { entity: GeometryEntity }) => {
     if (!entity.visible) return null;
     const { normal = [0, 0, 1], constant = 0, size = 10 } = entity.data;
@@ -303,6 +345,7 @@ const EntityDispatcher = ({ entityId, parentVisible }: { entityId: string, paren
     switch (entity.type) {
         case 'point': return <PointRenderer entity={entity} />;
         case 'line': return <LineRenderer entity={entity} />;
+        case 'cubic-bezier': return <CubicBezierRenderer entity={entity} />;
         case 'parametric': return <ParametricRenderer entity={entity} />;
         case 'plane': return <PlaneRenderer entity={entity} />;
         default: return null;

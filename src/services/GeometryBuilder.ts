@@ -32,6 +32,25 @@ export interface SegmentConfig {
     };
 }
 
+export interface CubicBezierConfig {
+    type: 'cubic-bezier';
+    name: string;
+    start: [number, number, number];
+    control1: [number, number, number];
+    control2: [number, number, number];
+    end: [number, number, number];
+    options: {
+        color?: string;
+        opacity?: number;
+        thickness?: number;
+        style?: LineStyle;
+        dashSize?: number;
+        gapSize?: number;
+        coordinateSpace?: CoordinateSpace;
+        visibleIfOutsideGraph?: boolean;
+    };
+}
+
 export interface ParametricConfig {
     type: 'parametric';
     name: string;
@@ -54,7 +73,7 @@ export interface GroupConfig {
     children: GeometryConfig[];
 }
 
-export type GeometryConfig = PointConfig | SegmentConfig | ParametricConfig | GroupConfig;
+export type GeometryConfig = PointConfig | SegmentConfig | CubicBezierConfig | ParametricConfig | GroupConfig;
 
 // Builder functions
 export function point(
@@ -80,6 +99,25 @@ export function segment(
         type: 'segment',
         name,
         start,
+        end,
+        options
+    };
+}
+
+export function cubicBezier(
+    name: string,
+    start: [number, number, number],
+    control1: [number, number, number],
+    control2: [number, number, number],
+    end: [number, number, number],
+    options: CubicBezierConfig['options'] = {}
+): CubicBezierConfig {
+    return {
+        type: 'cubic-bezier',
+        name,
+        start,
+        control1,
+        control2,
         end,
         options
     };

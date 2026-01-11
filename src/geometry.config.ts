@@ -7,6 +7,7 @@ import type { GeometryConfig } from './services/GeometryBuilder';
  * Define your geometry here using the builder functions:
  * - point(name, position, options)
  * - segment(name, start, end, options)
+ * - cubicBezier(name, start, control1, control2, end, options)
  * - parametric(name, equation, domain, options)
  * - group(name, options, children)
  * 
