@@ -1,35 +1,67 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAppStore, type GeometryType, type GeometryEntity } from '../../store/useAppStore';
 import { Plus } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
+import { telemetryStore } from '../../store/telemetryStore';
 
 export const AddGeometryPanel: React.FC = () => {
     const addEntity = useAppStore(state => state.addEntity);
     const [type, setType] = useState<GeometryType>('point');
     const [name, setName] = useState('');
     const [color, setColor] = useState('#ff0000');
+    const [telemetryEntries, setTelemetryEntries] = useState<Array<{ index: number; key: string; value: any }>>([]);
 
-    type BezierPoints = {
-        start: [number, number, number];
-        control1: [number, number, number];
-        control2: [number, number, number];
-        end: [number, number, number];
+    const parseInput = (value: string) => {
+        const trimmed = value.trim();
+        if (trimmed.length === 0) return 0;
+        if (/^\$\d+$/.test(trimmed)) return trimmed;
+        const parsed = Number(trimmed);
+        return Number.isFinite(parsed) ? parsed : 0;
     };
 
+    type BezierPoints = {
+        start: [string, string, string];
+        control1: [string, string, string];
+        control2: [string, string, string];
+        end: [string, string, string];
+    };
+    type LinePoints = { start: [string, string, string]; end: [string, string, string] };
+
     // Type specific states
-    const [pointPos, setPointPos] = useState({ x: 0, y: 0, z: 0 });
-    const [linePoints, setLinePoints] = useState({ start: [0, 0, 0], end: [1, 1, 1] });
+    const [pointPos, setPointPos] = useState({ x: '0', y: '0', z: '0' });
+    const [linePoints, setLinePoints] = useState<LinePoints>({
+        start: ['0', '0', '0'],
+        end: ['1', '1', '1']
+    });
     const [bezierPoints, setBezierPoints] = useState<BezierPoints>({
-        start: [0, 0, 0],
-        control1: [1, 0, 0],
-        control2: [2, 0, 0],
-        end: [3, 0, 0]
+        start: ['0', '0', '0'],
+        control1: ['1', '0', '0'],
+        control2: ['2', '0', '0'],
+        end: ['3', '0', '0']
     });
     const [parametric, setParametric] = useState({
         x: 'u', y: 'v', z: 'sin(u)*cos(v)',
-        uMin: -5, uMax: 5, vMin: -5, vMax: 5
+        uMin: '-5', uMax: '5', vMin: '-5', vMax: '5'
     });
-    const [plane, setPlane] = useState({ normal: [0, 0, 1], constant: 0, size: 20 });
+    const [plane, setPlane] = useState({ normal: ['0', '0', '1'] as [string, string, string], constant: '0', size: '20' });
+
+    useEffect(() => {
+        const updateTelemetry = () => {
+            const snapshot = telemetryStore.getState() as Record<string, any>;
+            const keys = Object.keys(snapshot).sort((a, b) => a.localeCompare(b));
+            setTelemetryEntries(
+                keys.map((key, index) => ({
+                    index: index + 1,
+                    key,
+                    value: snapshot[key]
+                }))
+            );
+        };
+
+        updateTelemetry();
+        const unsubscribe = telemetryStore.subscribe(updateTelemetry);
+        return () => unsubscribe();
+    }, []);
 
     const handleAdd = () => {
         const id = uuidv4();
@@ -37,17 +69,22 @@ export const AddGeometryPanel: React.FC = () => {
 
         switch (type) {
             case 'point':
-                entityData = { position: [pointPos.x, pointPos.y, pointPos.z], radius: 0.2, shape: 'sphere' };
+                entityData = { position: [parseInput(pointPos.x), parseInput(pointPos.y), parseInput(pointPos.z)], radius: 0.2, shape: 'sphere' };
                 break;
             case 'line':
-                entityData = { start: linePoints.start, end: linePoints.end, thickness: 2, style: 'solid' };
+                entityData = {
+                    start: linePoints.start.map(parseInput),
+                    end: linePoints.end.map(parseInput),
+                    thickness: 2,
+                    style: 'solid'
+                };
                 break;
             case 'cubic-bezier':
                 entityData = {
-                    start: bezierPoints.start,
-                    control1: bezierPoints.control1,
-                    control2: bezierPoints.control2,
-                    end: bezierPoints.end,
+                    start: bezierPoints.start.map(parseInput),
+                    control1: bezierPoints.control1.map(parseInput),
+                    control2: bezierPoints.control2.map(parseInput),
+                    end: bezierPoints.end.map(parseInput),
                     thickness: 2,
                     style: 'solid'
                 };
@@ -55,11 +92,18 @@ export const AddGeometryPanel: React.FC = () => {
             case 'parametric':
                 entityData = {
                     equation: { x: parametric.x, y: parametric.y, z: parametric.z },
-                    domain: { u: [parametric.uMin, parametric.uMax], v: [parametric.vMin, parametric.vMax] }
+                    domain: {
+                        u: [parseInput(parametric.uMin), parseInput(parametric.uMax)],
+                        v: [parseInput(parametric.vMin), parseInput(parametric.vMax)]
+                    }
                 };
                 break;
             case 'plane':
-                entityData = { normal: plane.normal, constant: plane.constant, size: plane.size };
+                entityData = {
+                    normal: plane.normal.map(parseInput),
+                    constant: parseInput(plane.constant),
+                    size: parseInput(plane.size)
+                };
                 break;
         }
 
@@ -118,6 +162,31 @@ export const AddGeometryPanel: React.FC = () => {
                 />
             </div>
 
+            <div className="space-y-1">
+                <label className="text-[10px] font-bold uppercase text-muted-foreground">Telemetry References</label>
+                {telemetryEntries.length === 0 ? (
+                    <p className="text-[10px] text-muted-foreground italic">No telemetry data available yet.</p>
+                ) : (
+                    <div className="max-h-28 overflow-y-auto rounded border border-border/60 bg-surface/40 text-[10px]">
+                        {telemetryEntries.map((entry) => (
+                            <div
+                                key={entry.key}
+                                className="flex items-center justify-between gap-2 px-2 py-1 border-b border-border/40 last:border-b-0"
+                            >
+                                <span className="font-mono text-accent">${entry.index}</span>
+                                <span className="font-mono text-muted-foreground flex-1 truncate">{entry.key}</span>
+                                <span className="font-mono text-accent-foreground">
+                                    {typeof entry.value === 'number'
+                                        ? entry.value.toFixed(2)
+                                        : String(entry.value ?? '')}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+                )}
+                <p className="text-[10px] text-muted-foreground">Use $1, $2, ... in numeric fields.</p>
+            </div>
+
             {/* Type Specific Forms */}
             {type === 'point' && (
                 <div className="grid grid-cols-3 gap-2">
@@ -125,9 +194,10 @@ export const AddGeometryPanel: React.FC = () => {
                         <div key={axis} className="space-y-1">
                             <label className="text-[10px] font-bold uppercase text-muted-foreground">{axis}</label>
                             <input
-                                type="number"
+                                type="text"
+                                inputMode="decimal"
                                 value={pointPos[axis as 'x' | 'y' | 'z']}
-                                onChange={(e) => setPointPos({ ...pointPos, [axis]: parseFloat(e.target.value) || 0 })}
+                                onChange={(e) => setPointPos({ ...pointPos, [axis]: e.target.value })}
                                 className="w-full bg-surface border border-border rounded px-2 py-1 text-xs"
                             />
                         </div>
@@ -142,11 +212,12 @@ export const AddGeometryPanel: React.FC = () => {
                         {[0, 1, 2].map(i => (
                             <input
                                 key={i}
-                                type="number"
+                                type="text"
+                                inputMode="decimal"
                                 value={linePoints.start[i]}
                                 onChange={(e) => {
-                                    const newStart = [...linePoints.start];
-                                    newStart[i] = parseFloat(e.target.value) || 0;
+                                    const newStart = [...linePoints.start] as [string, string, string];
+                                    newStart[i] = e.target.value;
                                     setLinePoints({ ...linePoints, start: newStart });
                                 }}
                                 className="w-full bg-surface border border-border rounded px-2 py-1 text-xs"
@@ -158,11 +229,12 @@ export const AddGeometryPanel: React.FC = () => {
                         {[0, 1, 2].map(i => (
                             <input
                                 key={i}
-                                type="number"
+                                type="text"
+                                inputMode="decimal"
                                 value={linePoints.end[i]}
                                 onChange={(e) => {
-                                    const newEnd = [...linePoints.end];
-                                    newEnd[i] = parseFloat(e.target.value) || 0;
+                                    const newEnd = [...linePoints.end] as [string, string, string];
+                                    newEnd[i] = e.target.value;
                                     setLinePoints({ ...linePoints, end: newEnd });
                                 }}
                                 className="w-full bg-surface border border-border rounded px-2 py-1 text-xs"
@@ -185,12 +257,13 @@ export const AddGeometryPanel: React.FC = () => {
                             {[0, 1, 2].map(i => (
                                 <input
                                     key={i}
-                                    type="number"
+                                    type="text"
+                                    inputMode="decimal"
                                     value={bezierPoints[key][i]}
                                     onChange={(e) => {
                                         const next = { ...bezierPoints };
-                                        const values = [...next[key]] as [number, number, number];
-                                        values[i] = parseFloat(e.target.value) || 0;
+                                        const values = [...next[key]] as [string, string, string];
+                                        values[i] = e.target.value;
                                         next[key] = values;
                                         setBezierPoints(next);
                                     }}
@@ -209,11 +282,12 @@ export const AddGeometryPanel: React.FC = () => {
                         {[0, 1, 2].map(i => (
                             <input
                                 key={i}
-                                type="number"
+                                type="text"
+                                inputMode="decimal"
                                 value={plane.normal[i]}
                                 onChange={(e) => {
-                                    const newNorm = [...plane.normal];
-                                    newNorm[i] = parseFloat(e.target.value) || 0;
+                                    const newNorm = [...plane.normal] as [string, string, string];
+                                    newNorm[i] = e.target.value;
                                     setPlane({ ...plane, normal: newNorm });
                                 }}
                                 className="w-full bg-surface border border-border rounded px-2 py-1 text-xs"
@@ -224,18 +298,20 @@ export const AddGeometryPanel: React.FC = () => {
                         <div className="space-y-1">
                             <label className="text-[10px] font-bold uppercase text-muted-foreground">Const</label>
                             <input
-                                type="number"
+                                type="text"
+                                inputMode="decimal"
                                 value={plane.constant}
-                                onChange={(e) => setPlane({ ...plane, constant: parseFloat(e.target.value) || 0 })}
+                                onChange={(e) => setPlane({ ...plane, constant: e.target.value })}
                                 className="w-full bg-surface border border-border rounded px-2 py-1 text-xs"
                             />
                         </div>
                         <div className="space-y-1">
                             <label className="text-[10px] font-bold uppercase text-muted-foreground">Size</label>
                             <input
-                                type="number"
+                                type="text"
+                                inputMode="decimal"
                                 value={plane.size}
-                                onChange={(e) => setPlane({ ...plane, size: parseFloat(e.target.value) || 1 })}
+                                onChange={(e) => setPlane({ ...plane, size: e.target.value })}
                                 className="w-full bg-surface border border-border rounded px-2 py-1 text-xs"
                             />
                         </div>
@@ -260,15 +336,15 @@ export const AddGeometryPanel: React.FC = () => {
                         <div className="space-y-1">
                             <label className="text-[10px] font-bold uppercase text-muted-foreground">U Range</label>
                             <div className="flex gap-1">
-                                <input type="number" value={parametric.uMin} onChange={(e) => setParametric({ ...parametric, uMin: parseFloat(e.target.value) })} className="w-full bg-surface border border-border rounded px-1 py-1 text-xs" />
-                                <input type="number" value={parametric.uMax} onChange={(e) => setParametric({ ...parametric, uMax: parseFloat(e.target.value) })} className="w-full bg-surface border border-border rounded px-1 py-1 text-xs" />
+                                <input type="text" inputMode="decimal" value={parametric.uMin} onChange={(e) => setParametric({ ...parametric, uMin: e.target.value })} className="w-full bg-surface border border-border rounded px-1 py-1 text-xs" />
+                                <input type="text" inputMode="decimal" value={parametric.uMax} onChange={(e) => setParametric({ ...parametric, uMax: e.target.value })} className="w-full bg-surface border border-border rounded px-1 py-1 text-xs" />
                             </div>
                         </div>
                         <div className="space-y-1">
                             <label className="text-[10px] font-bold uppercase text-muted-foreground">V Range</label>
                             <div className="flex gap-1">
-                                <input type="number" value={parametric.vMin} onChange={(e) => setParametric({ ...parametric, vMin: parseFloat(e.target.value) })} className="w-full bg-surface border border-border rounded px-1 py-1 text-xs" />
-                                <input type="number" value={parametric.vMax} onChange={(e) => setParametric({ ...parametric, vMax: parseFloat(e.target.value) })} className="w-full bg-surface border border-border rounded px-1 py-1 text-xs" />
+                                <input type="text" inputMode="decimal" value={parametric.vMin} onChange={(e) => setParametric({ ...parametric, vMin: e.target.value })} className="w-full bg-surface border border-border rounded px-1 py-1 text-xs" />
+                                <input type="text" inputMode="decimal" value={parametric.vMax} onChange={(e) => setParametric({ ...parametric, vMax: e.target.value })} className="w-full bg-surface border border-border rounded px-1 py-1 text-xs" />
                             </div>
                         </div>
                     </div>

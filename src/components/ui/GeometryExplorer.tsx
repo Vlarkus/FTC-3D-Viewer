@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, type ChangeEvent } from "react";
-import { useAppStore } from "../../store/useAppStore";
+import { useAppStore, type GeometryEntity } from "../../store/useAppStore";
 import {
   ChevronRight,
   ChevronDown,
@@ -17,6 +17,7 @@ import {
   AlertTriangle,
   X,
   GripVertical,
+  Download,
 } from "lucide-react";
 import clsx from "clsx";
 import type { DragEndEvent } from "@dnd-kit/core";
@@ -151,6 +152,83 @@ const DeletionModal = ({
               CONFIRM DELETION
             </button>
           )}
+          <button
+            onClick={onClose}
+            className="w-full py-2 px-4 hover:bg-surface-highlight text-muted-foreground hover:text-white rounded text-xs transition-colors font-medium"
+          >
+            CANCEL
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const ExportModal = ({
+  isOpen,
+  onClose,
+  onExport,
+  defaultName,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onExport: (scope: "all" | "selected", name: string) => void;
+  defaultName: string;
+}) => {
+  const [name, setName] = useState(defaultName);
+
+  useEffect(() => {
+    if (isOpen) setName(defaultName);
+  }, [defaultName, isOpen]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-surface border border-border rounded-lg shadow-2xl max-w-sm w-full overflow-hidden animate-in zoom-in-95 duration-200">
+        <div className="p-4 border-b border-border flex justify-between items-center bg-surface-highlight/30">
+          <h3 className="font-bold text-sm uppercase tracking-wider text-accent">
+            Export Geometry
+          </h3>
+          <button
+            onClick={onClose}
+            className="text-muted-foreground hover:text-white transition-colors"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-3">
+          <div className="space-y-1">
+            <label className="text-xs font-bold uppercase text-muted-foreground">
+              File Name
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder="geometry-export"
+              className="w-full bg-surface border border-border rounded px-2 py-1 text-xs focus:outline-none focus:border-accent"
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Choose what to export.
+          </p>
+        </div>
+
+        <div className="p-4 bg-surface-highlight/10 flex flex-col gap-2">
+          <button
+            onClick={() => onExport("all", name)}
+            className="w-full py-2 px-4 bg-accent text-accent-foreground rounded font-bold text-xs transition-colors hover:brightness-110"
+          >
+            EXPORT ALL
+          </button>
+          <button
+            onClick={() => onExport("selected", name)}
+            className="w-full py-2 px-4 bg-surface-highlight hover:bg-surface-highlight2 text-white/90 rounded font-bold text-xs transition-colors border border-border"
+          >
+            EXPORT SELECTED
+          </button>
           <button
             onClick={onClose}
             className="w-full py-2 px-4 hover:bg-surface-highlight text-muted-foreground hover:text-white rounded text-xs transition-colors font-medium"
@@ -383,7 +461,9 @@ export const GeometryExplorer = () => {
   } | null>(null);
   const [multiSelectEnabled, setMultiSelectEnabled] = useState(false);
   const [shiftPressed, setShiftPressed] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const importInputRef = useRef<HTMLInputElement>(null);
+  const importEntitiesInputRef = useRef<HTMLInputElement>(null);
   const colorInputRef = useRef<HTMLInputElement>(null);
 
   const sensors = useSensors(
@@ -594,6 +674,127 @@ export const GeometryExplorer = () => {
     importInputRef.current?.click();
   };
 
+  const handleImportEntitiesClick = () => {
+    importEntitiesInputRef.current?.click();
+  };
+
+  const serializeEntity = (entity: GeometryEntity) => ({
+    type: "entity",
+    entity: {
+      name: entity.name,
+      type: entity.type,
+      visible: entity.visible,
+      color: entity.color,
+      opacity: entity.opacity,
+      coordinateSpace: entity.coordinateSpace,
+      visibleIfOutsideGraph: entity.visibleIfOutsideGraph,
+      data: entity.data,
+    },
+  });
+
+  const serializeGroup = (groupId: string): any => {
+    const group = groups[groupId];
+    if (!group) return null;
+    return {
+      type: "group",
+      name: group.name,
+      visible: group.visible,
+      children: [
+        ...group.childrenGroups
+          .map((childId) => serializeGroup(childId))
+          .filter(Boolean),
+        ...group.childrenEntities
+          .map((childId) => entities[childId])
+          .filter(Boolean)
+          .map((entity) => serializeEntity(entity)),
+      ],
+    };
+  };
+
+  const collectSelectedExportItems = () => {
+    const selectedGroups = new Set(
+      Array.from(selectedIds).filter((id) => !!groups[id])
+    );
+    const selectedEntities = Array.from(selectedIds).filter(
+      (id) => !!entities[id]
+    );
+
+    const selectedRootGroups = Array.from(selectedGroups).filter((groupId) => {
+      let current = groups[groupId]?.parentId;
+      while (current) {
+        if (selectedGroups.has(current)) return false;
+        current = groups[current]?.parentId;
+      }
+      return true;
+    });
+
+    const entityOutsideSelectedGroups = selectedEntities.filter((entityId) => {
+      let current = entities[entityId]?.parentId;
+      while (current) {
+        if (selectedGroups.has(current)) return false;
+        current = groups[current]?.parentId;
+      }
+      return true;
+    });
+
+    return [
+      ...selectedRootGroups
+        .map((groupId) => serializeGroup(groupId))
+        .filter(Boolean),
+      ...entityOutsideSelectedGroups
+        .map((entityId) => entities[entityId])
+        .filter(Boolean)
+        .map((entity) => serializeEntity(entity)),
+    ];
+  };
+
+  const handleExportClick = () => {
+    if (Object.keys(groups).length === 0 && Object.keys(entities).length === 0) {
+      alert("No geometry available to export.");
+      return;
+    }
+    setIsExportModalOpen(true);
+  };
+
+  const handleExport = (scope: "all" | "selected", name: string) => {
+    const items =
+      scope === "all"
+        ? [
+            ...rootGroupIds
+              .map((groupId) => serializeGroup(groupId))
+              .filter(Boolean),
+            ...rootEntityIds
+              .map((entityId) => entities[entityId])
+              .filter(Boolean)
+              .map((entity) => serializeEntity(entity)),
+          ]
+        : collectSelectedExportItems();
+
+    if (items.length === 0) {
+      alert("No matching items to export.");
+      return;
+    }
+
+    const payload = {
+      version: 1,
+      items,
+    };
+
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    const trimmedName = name.trim();
+    link.download = `${trimmedName || "geometry-export"}.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    setIsExportModalOpen(false);
+  };
+
   const handleImportFile = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = "";
@@ -705,6 +906,58 @@ export const GeometryExplorer = () => {
     });
   };
 
+  const handleImportEntitiesFile = async (
+    event: ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    let parsed: any;
+    try {
+      parsed = JSON.parse(await file.text());
+    } catch (error) {
+      alert("Failed to parse entity file. Please select valid JSON.");
+      return;
+    }
+
+    if (!parsed?.items || !Array.isArray(parsed.items)) {
+      alert('Invalid entity file. Expected an "items" array.');
+      return;
+    }
+
+    const importItem = (item: any, parentId?: string) => {
+      if (item?.type === "group") {
+        const groupId = `group-${uuidv4()}`;
+        addGroup({
+          id: groupId,
+          name: item.name || "Imported Group",
+          parentId,
+          visible: item.visible ?? true,
+        });
+        const children = Array.isArray(item.children) ? item.children : [];
+        children.forEach((child: any) => importItem(child, groupId));
+      } else if (item?.type === "entity") {
+        const entity = item.entity;
+        if (!entity || !entity.type) return;
+        addEntity({
+          id: `entity-${uuidv4()}`,
+          parentId,
+          name: entity.name || "Imported Entity",
+          type: entity.type,
+          visible: entity.visible ?? true,
+          color: entity.color || "#ffffff",
+          opacity: entity.opacity ?? 1,
+          coordinateSpace: entity.coordinateSpace || "plot",
+          visibleIfOutsideGraph: entity.visibleIfOutsideGraph ?? true,
+          data: entity.data ?? {},
+        });
+      }
+    };
+
+    parsed.items.forEach((item: any) => importItem(item));
+  };
+
   return (
     <div className="space-y-2">
       <DeletionModal
@@ -729,6 +982,12 @@ export const GeometryExplorer = () => {
             : ""
         }
       />
+      <ExportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        onExport={handleExport}
+        defaultName="geometry-export"
+      />
       <div className="space-y-2 pb-4">
         <button
           onClick={handleImportClick}
@@ -742,6 +1001,19 @@ export const GeometryExplorer = () => {
           accept={BLITZ_FILE_EXTENSION}
           className="hidden"
           onChange={handleImportFile}
+        />
+        <button
+          onClick={handleImportEntitiesClick}
+          className="w-full py-2 rounded text-[10px] font-bold uppercase border bg-surface text-muted-foreground border-border hover:text-white transition-colors"
+        >
+          Import Entities
+        </button>
+        <input
+          ref={importEntitiesInputRef}
+          type="file"
+          accept=".json"
+          className="hidden"
+          onChange={handleImportEntitiesFile}
         />
       </div>
       <div className="flex justify-between items-center px-1 ">
@@ -766,6 +1038,13 @@ export const GeometryExplorer = () => {
             }
           >
             <Layers size={16} />
+          </button>
+          <button
+            onClick={handleExportClick}
+            className="p-1.5 hover:bg-surface-highlight rounded text-muted-foreground hover:text-white transition-colors"
+            title="Export Entities"
+          >
+            <Download size={16} />
           </button>
           <button
             onClick={handleCreateGroup}

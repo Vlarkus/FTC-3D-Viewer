@@ -130,7 +130,11 @@ export const Sidebar = () => {
               className="w-full flex items-center justify-between text-xs font-bold text-muted-foreground uppercase mb-4"
             >
               <span>Connection</span>
-              {isConnectionOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+              {isConnectionOpen ? (
+                <ChevronDown size={14} />
+              ) : (
+                <ChevronRight size={14} />
+              )}
             </button>
             {isConnectionOpen && <ConnectionPanel />}
           </section>
@@ -142,7 +146,11 @@ export const Sidebar = () => {
               className="w-full flex items-center justify-between text-xs font-bold text-muted-foreground uppercase mb-4"
             >
               <span>View Control</span>
-              {isViewControlOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+              {isViewControlOpen ? (
+                <ChevronDown size={14} />
+              ) : (
+                <ChevronRight size={14} />
+              )}
             </button>
             {isViewControlOpen && (
               <div className="space-y-8">
@@ -160,7 +168,11 @@ export const Sidebar = () => {
               className="w-full flex items-center justify-between text-xs font-bold text-muted-foreground uppercase mb-4"
             >
               <span>Geometry Tools</span>
-              {isGeometryOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+              {isGeometryOpen ? (
+                <ChevronDown size={14} />
+              ) : (
+                <ChevronRight size={14} />
+              )}
             </button>
             {isGeometryOpen && (
               <div className="space-y-6">

@@ -2,6 +2,7 @@ import React from 'react';
 import { useAppStore, type GeometryEntity, type CoordinateSpace, type PointShape } from '../../store/useAppStore';
 import { Line, Sphere, Box, Cone } from '@react-three/drei';
 import * as THREE from 'three';
+import { telemetryStore } from '../../store/telemetryStore';
 // import { useCoordinateMapper } from '../../hooks/useCoordinateMapper'; // We'd need to extract this logic if we want to reuse it easily
 
 // Helper to map coordinates if space is 'plot'
@@ -87,14 +88,69 @@ const useClippingPlanes = (enabled: boolean) => {
     }, [axes, enabled]);
 };
 
+const useTelemetryReferences = () => {
+    const telemetrySnapshot = React.useSyncExternalStore(
+        telemetryStore.subscribe,
+        telemetryStore.getState
+    ) as Record<string, any>;
+    const telemetryKeys = React.useMemo(
+        () => Object.keys(telemetrySnapshot).sort((a, b) => a.localeCompare(b)),
+        [telemetrySnapshot]
+    );
+
+    return { telemetrySnapshot, telemetryKeys };
+};
+
+const resolveTelemetryValue = (
+    value: any,
+    telemetrySnapshot: Record<string, any>,
+    telemetryKeys: string[]
+) => {
+    if (typeof value === 'number' && Number.isFinite(value)) return value;
+    if (typeof value === 'string') {
+        const trimmed = value.trim();
+        const refMatch = trimmed.match(/^\$(\d+)$/);
+        if (refMatch) {
+            const index = Number(refMatch[1]) - 1;
+            const key = telemetryKeys[index];
+            const refValue = key ? Number(telemetrySnapshot[key]) : NaN;
+            return Number.isFinite(refValue) ? refValue : 0;
+        }
+        const parsed = Number(trimmed);
+        return Number.isFinite(parsed) ? parsed : 0;
+    }
+    return 0;
+};
+
+const resolveVector3 = (
+    value: any,
+    telemetrySnapshot: Record<string, any>,
+    telemetryKeys: string[]
+): [number, number, number] => {
+    if (!Array.isArray(value)) return [0, 0, 0];
+    return [
+        resolveTelemetryValue(value[0], telemetrySnapshot, telemetryKeys),
+        resolveTelemetryValue(value[1], telemetrySnapshot, telemetryKeys),
+        resolveTelemetryValue(value[2], telemetrySnapshot, telemetryKeys),
+    ];
+};
+
 // ... existing useCoordinateTransform ...
 
-const PointRenderer = ({ entity }: { entity: GeometryEntity }) => {
+const PointRenderer = ({
+    entity,
+    telemetrySnapshot,
+    telemetryKeys,
+}: {
+    entity: GeometryEntity;
+    telemetrySnapshot: Record<string, any>;
+    telemetryKeys: string[];
+}) => {
     if (!entity.visible) return null;
     const { position, radius = 0.5, shape = 'sphere' } = entity.data;
     const transform = useCoordinateTransform(entity.coordinateSpace);
     const clippingPlanes = useClippingPlanes(!entity.visibleIfOutsideGraph);
-    const finalPos = transform(position);
+    const finalPos = transform(resolveVector3(position, telemetrySnapshot, telemetryKeys));
 
     const commonProps = {
         position: new THREE.Vector3(...finalPos),
@@ -122,15 +178,23 @@ const PointRenderer = ({ entity }: { entity: GeometryEntity }) => {
     }
 };
 
-const LineRenderer = ({ entity }: { entity: GeometryEntity }) => {
+const LineRenderer = ({
+    entity,
+    telemetrySnapshot,
+    telemetryKeys,
+}: {
+    entity: GeometryEntity;
+    telemetrySnapshot: Record<string, any>;
+    telemetryKeys: string[];
+}) => {
     if (!entity.visible) return null;
     const { start, end, thickness = 2, style = 'solid', dashSize = 1, gapSize = 0.5 } = entity.data;
     const transform = useCoordinateTransform(entity.coordinateSpace);
     const clippingPlanes = useClippingPlanes(!entity.visibleIfOutsideGraph);
 
     // Transform start/end
-    const p1 = new THREE.Vector3(...transform(start));
-    const p2 = new THREE.Vector3(...transform(end));
+    const p1 = new THREE.Vector3(...transform(resolveVector3(start, telemetrySnapshot, telemetryKeys)));
+    const p2 = new THREE.Vector3(...transform(resolveVector3(end, telemetrySnapshot, telemetryKeys)));
 
     // NOTE: Drei Line wrapping Line2 may not support standard clippingPlanes prop directly on the component 
     // depending on version, but usually does via material-clippingPlanes. 
@@ -156,7 +220,15 @@ const LineRenderer = ({ entity }: { entity: GeometryEntity }) => {
     );
 };
 
-const CubicBezierRenderer = ({ entity }: { entity: GeometryEntity }) => {
+const CubicBezierRenderer = ({
+    entity,
+    telemetrySnapshot,
+    telemetryKeys,
+}: {
+    entity: GeometryEntity;
+    telemetrySnapshot: Record<string, any>;
+    telemetryKeys: string[];
+}) => {
     if (!entity.visible) return null;
     const {
         start,
@@ -173,13 +245,13 @@ const CubicBezierRenderer = ({ entity }: { entity: GeometryEntity }) => {
 
     const curvePoints = React.useMemo(() => {
         const curve = new THREE.CubicBezierCurve3(
-            new THREE.Vector3(...transform(start)),
-            new THREE.Vector3(...transform(control1)),
-            new THREE.Vector3(...transform(control2)),
-            new THREE.Vector3(...transform(end))
+            new THREE.Vector3(...transform(resolveVector3(start, telemetrySnapshot, telemetryKeys))),
+            new THREE.Vector3(...transform(resolveVector3(control1, telemetrySnapshot, telemetryKeys))),
+            new THREE.Vector3(...transform(resolveVector3(control2, telemetrySnapshot, telemetryKeys))),
+            new THREE.Vector3(...transform(resolveVector3(end, telemetrySnapshot, telemetryKeys)))
         );
         return curve.getPoints(50);
-    }, [start, control1, control2, end, transform]);
+    }, [start, control1, control2, end, transform, telemetrySnapshot, telemetryKeys]);
 
     return (
         <Line
@@ -198,11 +270,22 @@ const CubicBezierRenderer = ({ entity }: { entity: GeometryEntity }) => {
     );
 };
 
-const PlaneRenderer = ({ entity }: { entity: GeometryEntity }) => {
+const PlaneRenderer = ({
+    entity,
+    telemetrySnapshot,
+    telemetryKeys,
+}: {
+    entity: GeometryEntity;
+    telemetrySnapshot: Record<string, any>;
+    telemetryKeys: string[];
+}) => {
     if (!entity.visible) return null;
     const { normal = [0, 0, 1], constant = 0, size = 10 } = entity.data;
     const clippingPlanes = useClippingPlanes(!entity.visibleIfOutsideGraph);
     const transform = useCoordinateTransform(entity.coordinateSpace);
+    const resolvedNormal = resolveVector3(normal, telemetrySnapshot, telemetryKeys);
+    const resolvedConstant = resolveTelemetryValue(constant, telemetrySnapshot, telemetryKeys);
+    const resolvedSize = resolveTelemetryValue(size, telemetrySnapshot, telemetryKeys);
 
     // Visual Normal mapping: Data X,Y,Z -> Visual X,Z,Y
     // Actually, let's treat normal as a vector in data space.
@@ -220,7 +303,7 @@ const PlaneRenderer = ({ entity }: { entity: GeometryEntity }) => {
 
     // To orient the plane mesh along the normal, we can use lookAt or quaternion
     // Standard Plane mesh is at [0,0,1] normal (facing +Z in ThreeJS)
-    const normVec = new THREE.Vector3(...normal).normalize();
+    const normVec = new THREE.Vector3(...resolvedNormal).normalize();
     // Visual axes: FTC UP (Z) is Visual UP (Y).
     // If user enters normal [0,0,1], they mean UP. 
     // We should map this normal too?
@@ -232,9 +315,13 @@ const PlaneRenderer = ({ entity }: { entity: GeometryEntity }) => {
         <group position={[vx, vy, vz]}>
             <mesh
                 onUpdate={(self) => self.lookAt(visualNormal.clone().add(self.position))}
-                position={[visualNormal.x * constant, visualNormal.y * constant, visualNormal.z * constant]}
+                position={[
+                    visualNormal.x * resolvedConstant,
+                    visualNormal.y * resolvedConstant,
+                    visualNormal.z * resolvedConstant,
+                ]}
             >
-                <planeGeometry args={[size, size]} />
+                <planeGeometry args={[resolvedSize, resolvedSize]} />
                 <meshStandardMaterial
                     color={entity.color}
                     transparent
@@ -247,7 +334,15 @@ const PlaneRenderer = ({ entity }: { entity: GeometryEntity }) => {
     );
 };
 
-const ParametricRenderer = ({ entity }: { entity: GeometryEntity }) => {
+const ParametricRenderer = ({
+    entity,
+    telemetrySnapshot,
+    telemetryKeys,
+}: {
+    entity: GeometryEntity;
+    telemetrySnapshot: Record<string, any>;
+    telemetryKeys: string[];
+}) => {
     if (!entity.visible) return null;
     const { equation, domain } = entity.data;
     const clippingPlanes = useClippingPlanes(!entity.visibleIfOutsideGraph);
@@ -259,8 +354,12 @@ const ParametricRenderer = ({ entity }: { entity: GeometryEntity }) => {
         const geom = new THREE.BufferGeometry();
         const positions = [];
         const indices = [];
-        const uMin = domain.u[0], uMax = domain.u[1];
-        const vMin = domain.v[0], vMax = domain.v[1];
+        const rawU = Array.isArray(domain?.u) ? domain.u : [0, 1];
+        const rawV = Array.isArray(domain?.v) ? domain.v : [0, 1];
+        const uMin = resolveTelemetryValue(rawU[0], telemetrySnapshot, telemetryKeys);
+        const uMax = resolveTelemetryValue(rawU[1], telemetrySnapshot, telemetryKeys);
+        const vMin = resolveTelemetryValue(rawV[0], telemetrySnapshot, telemetryKeys);
+        const vMax = resolveTelemetryValue(rawV[1], telemetrySnapshot, telemetryKeys);
 
         let funcX: Function, funcY: Function, funcZ: Function;
 
@@ -304,7 +403,7 @@ const ParametricRenderer = ({ entity }: { entity: GeometryEntity }) => {
         geom.setIndex(indices);
         geom.computeVertexNormals();
         return geom;
-    }, [equation, domain, axes, transform]);
+    }, [equation, domain, axes, transform, telemetrySnapshot, telemetryKeys]);
 
     return (
         <mesh geometry={geometry}>
@@ -320,7 +419,17 @@ const ParametricRenderer = ({ entity }: { entity: GeometryEntity }) => {
 };
 
 // Recursive Group Renderer
-const GroupRenderer = ({ groupId, visibleFromParent = true }: { groupId: string, visibleFromParent?: boolean }) => {
+const GroupRenderer = ({
+    groupId,
+    visibleFromParent = true,
+    telemetrySnapshot,
+    telemetryKeys,
+}: {
+    groupId: string;
+    visibleFromParent?: boolean;
+    telemetrySnapshot: Record<string, any>;
+    telemetryKeys: string[];
+}) => {
     const group = useAppStore(state => state.groups[groupId]);
     if (!group) return null;
     const isVisible = visibleFromParent && group.visible;
@@ -328,26 +437,48 @@ const GroupRenderer = ({ groupId, visibleFromParent = true }: { groupId: string,
     return (
         <group>
             {group.childrenEntities.map(childId => (
-                <EntityDispatcher key={childId} entityId={childId} parentVisible={isVisible} />
+                <EntityDispatcher
+                    key={childId}
+                    entityId={childId}
+                    parentVisible={isVisible}
+                    telemetrySnapshot={telemetrySnapshot}
+                    telemetryKeys={telemetryKeys}
+                />
             ))}
             {group.childrenGroups.map(childGroupId => (
-                <GroupRenderer key={childGroupId} groupId={childGroupId} visibleFromParent={isVisible} />
+                <GroupRenderer
+                    key={childGroupId}
+                    groupId={childGroupId}
+                    visibleFromParent={isVisible}
+                    telemetrySnapshot={telemetrySnapshot}
+                    telemetryKeys={telemetryKeys}
+                />
             ))}
         </group>
     );
 };
 
-const EntityDispatcher = ({ entityId, parentVisible }: { entityId: string, parentVisible: boolean }) => {
+const EntityDispatcher = ({
+    entityId,
+    parentVisible,
+    telemetrySnapshot,
+    telemetryKeys,
+}: {
+    entityId: string;
+    parentVisible: boolean;
+    telemetrySnapshot: Record<string, any>;
+    telemetryKeys: string[];
+}) => {
     const entity = useAppStore(state => state.entities[entityId]);
     if (!entity) return null;
     if (!parentVisible || !entity.visible) return null;
 
     switch (entity.type) {
-        case 'point': return <PointRenderer entity={entity} />;
-        case 'line': return <LineRenderer entity={entity} />;
-        case 'cubic-bezier': return <CubicBezierRenderer entity={entity} />;
-        case 'parametric': return <ParametricRenderer entity={entity} />;
-        case 'plane': return <PlaneRenderer entity={entity} />;
+        case 'point': return <PointRenderer entity={entity} telemetrySnapshot={telemetrySnapshot} telemetryKeys={telemetryKeys} />;
+        case 'line': return <LineRenderer entity={entity} telemetrySnapshot={telemetrySnapshot} telemetryKeys={telemetryKeys} />;
+        case 'cubic-bezier': return <CubicBezierRenderer entity={entity} telemetrySnapshot={telemetrySnapshot} telemetryKeys={telemetryKeys} />;
+        case 'parametric': return <ParametricRenderer entity={entity} telemetrySnapshot={telemetrySnapshot} telemetryKeys={telemetryKeys} />;
+        case 'plane': return <PlaneRenderer entity={entity} telemetrySnapshot={telemetrySnapshot} telemetryKeys={telemetryKeys} />;
         default: return null;
     }
 };
@@ -355,14 +486,26 @@ const EntityDispatcher = ({ entityId, parentVisible }: { entityId: string, paren
 export const GeometryRenderer = () => {
     const rootGroupIds = useAppStore(state => state.rootGroupIds);
     const rootEntityIds = useAppStore(state => state.rootEntityIds);
+    const { telemetrySnapshot, telemetryKeys } = useTelemetryReferences();
 
     return (
         <group>
             {rootGroupIds.map(groupId => (
-                <GroupRenderer key={groupId} groupId={groupId} />
+                <GroupRenderer
+                    key={groupId}
+                    groupId={groupId}
+                    telemetrySnapshot={telemetrySnapshot}
+                    telemetryKeys={telemetryKeys}
+                />
             ))}
             {rootEntityIds.map(entityId => (
-                <EntityDispatcher key={entityId} entityId={entityId} parentVisible={true} />
+                <EntityDispatcher
+                    key={entityId}
+                    entityId={entityId}
+                    parentVisible={true}
+                    telemetrySnapshot={telemetrySnapshot}
+                    telemetryKeys={telemetryKeys}
+                />
             ))}
         </group>
     );
