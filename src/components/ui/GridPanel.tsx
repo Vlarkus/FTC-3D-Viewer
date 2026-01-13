@@ -1,41 +1,6 @@
 import React from 'react';
 import { useAppStore, type AxisSettings } from '../../store/useAppStore';
-
-const NumberInput = ({ value, onChange, min, ...props }: { value: number, onChange: (val: number) => void, min?: number } & React.InputHTMLAttributes<HTMLInputElement>) => {
-    const [localVal, setLocalVal] = React.useState(value.toString());
-
-    React.useEffect(() => {
-        setLocalVal(value.toString()); // Sync from parent
-    }, [value]);
-
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const val = e.target.value;
-        setLocalVal(val);
-
-        const parsed = parseFloat(val);
-        if (!isNaN(parsed)) {
-            // Apply min constraint if defined
-            if (min !== undefined && parsed < min) return;
-            onChange(parsed);
-        }
-    };
-
-    const handleBlur = () => {
-        setLocalVal(value.toString()); // Reset to valid state
-    };
-
-    return (
-        <input
-            {...props}
-            type="number" // basic HTML constraint
-            className="w-full bg-background border border-border rounded px-1"
-            value={localVal}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            step="any"
-        />
-    );
-};
+import { NumberField } from './NumberField';
 
 const AxisControl = ({ label, axis, settings, update }: { label: string, axis: 'x' | 'y' | 'z', settings: AxisSettings, update: any }) => {
     return (
@@ -45,30 +10,38 @@ const AxisControl = ({ label, axis, settings, update }: { label: string, axis: '
                 <div>
                     <span className="block text-[10px] text-muted-foreground">Range</span>
                     <div className="flex gap-1">
-                        <NumberInput
+                        <NumberField
                             value={settings.min}
                             onChange={(val) => update(axis, { min: val })}
+                            step={0.1}
+                            className="w-full"
                         />
-                        <NumberInput
+                        <NumberField
                             value={settings.max}
                             onChange={(val) => update(axis, { max: val })}
+                            step={0.1}
+                            className="w-full"
                         />
                     </div>
                 </div>
                 <div>
                     <span className="block text-[10px] text-muted-foreground">Size (Vis)</span>
-                    <NumberInput
+                    <NumberField
                         value={settings.size}
                         min={0.1} // Prevent zero or negative size
                         onChange={(val) => update(axis, { size: val })}
+                        step={0.1}
+                        className="w-full"
                     />
                 </div>
                 <div className="col-span-2">
                     <span className="block text-[10px] text-muted-foreground">Step</span>
-                    <NumberInput
+                    <NumberField
                         value={settings.step}
                         min={0}
                         onChange={(val) => update(axis, { step: val })}
+                        step={0.1}
+                        className="w-full"
                     />
                 </div>
             </div>

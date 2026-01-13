@@ -123,6 +123,7 @@ export const AddGeometryPanel: React.FC = () => {
         setName('');
     };
 
+
     return (
         <div className="space-y-4 bg-background/30 p-3 rounded border border-border/50">
             <div className="grid grid-cols-2 gap-2">
@@ -146,7 +147,7 @@ export const AddGeometryPanel: React.FC = () => {
                         type="color"
                         value={color}
                         onChange={(e) => setColor(e.target.value)}
-                        className="w-full h-7 bg-surface border border-border rounded px-1 py-0.5 cursor-pointer"
+                        className="w-full h-[30px] bg-surface border border-border rounded cursor-pointer p-0"
                     />
                 </div>
             </div>

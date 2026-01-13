@@ -207,13 +207,6 @@ export const ConnectionPanel: React.FC = () => {
           )}
         </div>
 
-        <p className="text-xs text-muted-foreground">
-          Connect to a local robot or type{" "}
-          <code className="text-accent-foreground px-1 bg-secondary rounded">
-            demo
-          </code>{" "}
-          to simulate data.
-        </p>
       </div>
 
       {/* Telemetry Mapping UI */}

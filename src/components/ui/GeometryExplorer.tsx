@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef, type ChangeEvent } from "react";
+import { useState, useEffect, useMemo, type ChangeEvent } from "react";
 import { useAppStore, type GeometryEntity } from "../../store/useAppStore";
+import { AlertModal } from "./AlertModal";
 import {
   ChevronRight,
   ChevronDown,
@@ -12,18 +13,16 @@ import {
   FolderPlus,
   Layers,
   Pencil,
-  Palette,
   Trash2,
   AlertTriangle,
   X,
   GripVertical,
   Download,
+  Palette,
 } from "lucide-react";
 import clsx from "clsx";
 import type { DragEndEvent } from "@dnd-kit/core";
-import { v4 as uuidv4 } from "uuid";
 
-const BLITZ_FILE_EXTENSION = ".txt";
 import {
   DndContext,
   closestCenter,
@@ -86,6 +85,12 @@ const TypeIcon = ({ type }: { type: string }) => {
       );
   }
 };
+
+const Tooltip = ({ label }: { label: string }) => (
+  <span className="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-surface-highlight px-2 py-0.5 text-[10px] text-white opacity-0 shadow-md transition-opacity group-hover:opacity-100">
+    {label}
+  </span>
+);
 
 const DeletionModal = ({
   isOpen,
@@ -228,6 +233,167 @@ const ExportModal = ({
             className="w-full py-2 px-4 bg-surface-highlight hover:bg-surface-highlight2 text-white/90 rounded font-bold text-xs transition-colors border border-border"
           >
             EXPORT SELECTED
+          </button>
+          <button
+            onClick={onClose}
+            className="w-full py-2 px-4 hover:bg-surface-highlight text-muted-foreground hover:text-white rounded text-xs transition-colors font-medium"
+          >
+            CANCEL
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const TextInputModal = ({
+  isOpen,
+  onClose,
+  onConfirm,
+  title,
+  label,
+  confirmLabel,
+  defaultValue,
+  placeholder,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: (value: string) => void;
+  title: string;
+  label: string;
+  confirmLabel: string;
+  defaultValue?: string;
+  placeholder?: string;
+}) => {
+  const [value, setValue] = useState(defaultValue ?? "");
+
+  useEffect(() => {
+    if (isOpen) setValue(defaultValue ?? "");
+  }, [defaultValue, isOpen]);
+
+  if (!isOpen) return null;
+
+  const trimmed = value.trim();
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-surface border border-border rounded-lg shadow-2xl max-w-sm w-full overflow-hidden animate-in zoom-in-95 duration-200">
+        <div className="p-4 border-b border-border flex justify-between items-center bg-surface-highlight/30">
+          <h3 className="font-bold text-sm uppercase tracking-wider text-accent">
+            {title}
+          </h3>
+          <button
+            onClick={onClose}
+            className="text-muted-foreground hover:text-white transition-colors"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-2">
+          <label className="text-xs font-bold uppercase text-muted-foreground">
+            {label}
+          </label>
+          <input
+            type="text"
+            value={value}
+            onChange={(event) => setValue(event.target.value)}
+            placeholder={placeholder}
+            className="w-full bg-surface border border-border rounded px-2 py-1 text-xs focus:outline-none focus:border-accent"
+          />
+        </div>
+
+        <div className="p-4 bg-surface-highlight/10 flex flex-col gap-2">
+          <button
+            onClick={() => {
+              if (!trimmed) return;
+              onConfirm(trimmed);
+            }}
+            className={clsx(
+              "w-full py-2 px-4 rounded font-bold text-xs transition-colors border",
+              trimmed
+                ? "bg-accent text-accent-foreground border-accent hover:brightness-110"
+                : "bg-surface text-muted-foreground border-border cursor-not-allowed"
+            )}
+            disabled={!trimmed}
+          >
+            {confirmLabel}
+          </button>
+          <button
+            onClick={onClose}
+            className="w-full py-2 px-4 hover:bg-surface-highlight text-muted-foreground hover:text-white rounded text-xs transition-colors font-medium"
+          >
+            CANCEL
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const ChangeParentModal = ({
+  isOpen,
+  onClose,
+  onConfirm,
+  groups,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: (parentId: string | null) => void;
+  groups: { id: string; name: string }[];
+}) => {
+  const [selectedId, setSelectedId] = useState<string>("root");
+
+  useEffect(() => {
+    if (isOpen) setSelectedId("root");
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-surface border border-border rounded-lg shadow-2xl max-w-sm w-full overflow-hidden animate-in zoom-in-95 duration-200">
+        <div className="p-4 border-b border-border flex justify-between items-center bg-surface-highlight/30">
+          <h3 className="font-bold text-sm uppercase tracking-wider text-accent">
+            Change Parent
+          </h3>
+          <button
+            onClick={onClose}
+            className="text-muted-foreground hover:text-white transition-colors"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-3">
+          <div className="space-y-1">
+            <label className="text-xs font-bold uppercase text-muted-foreground">
+              Target Group
+            </label>
+            <select
+              value={selectedId}
+              onChange={(event) => setSelectedId(event.target.value)}
+              className="w-full bg-surface border border-border rounded px-2 py-1 text-xs focus:outline-none focus:border-accent"
+            >
+              <option value="root">Root</option>
+              {groups.map((group) => (
+                <option key={group.id} value={group.id}>
+                  {group.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Move selected items to a new group.
+          </p>
+        </div>
+
+        <div className="p-4 bg-surface-highlight/10 flex flex-col gap-2">
+          <button
+            onClick={() => onConfirm(selectedId === "root" ? null : selectedId)}
+            className="w-full py-2 px-4 bg-accent text-accent-foreground rounded font-bold text-xs transition-colors hover:brightness-110"
+          >
+            MOVE ITEMS
           </button>
           <button
             onClick={onClose}
@@ -447,9 +613,6 @@ export const GeometryExplorer = () => {
   const removeGroup = useAppStore((state) => state.removeGroup);
   const removeEntity = useAppStore((state) => state.removeEntity);
   const reorderItem = useAppStore((state) => state.reorderItem);
-  const trailSettings = useAppStore((state) => state.trailSettings);
-  const setTrailSettings = useAppStore((state) => state.setTrailSettings);
-  const clearTrail = useAppStore((state) => state.clearTrail);
   const changeParent = useAppStore((state) => state.changeParent);
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -462,9 +625,13 @@ export const GeometryExplorer = () => {
   const [multiSelectEnabled, setMultiSelectEnabled] = useState(false);
   const [shiftPressed, setShiftPressed] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
-  const importInputRef = useRef<HTMLInputElement>(null);
-  const importEntitiesInputRef = useRef<HTMLInputElement>(null);
-  const colorInputRef = useRef<HTMLInputElement>(null);
+  const [isChangeParentModalOpen, setIsChangeParentModalOpen] = useState(false);
+  const [isCreateGroupModalOpen, setIsCreateGroupModalOpen] = useState(false);
+  const [renameTargetId, setRenameTargetId] = useState<string | null>(null);
+  const [alertModal, setAlertModal] = useState<{
+    title: string;
+    message: string;
+  } | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -487,8 +654,7 @@ export const GeometryExplorer = () => {
   };
 
   const handleCreateGroup = () => {
-    const name = prompt("Group name:");
-    if (name) createGroup(name);
+    setIsCreateGroupModalOpen(true);
   };
 
   const handleDeleteClick = () => {
@@ -584,44 +750,24 @@ export const GeometryExplorer = () => {
 
   const handleChangeParentClick = () => {
     if (selectedIds.size === 0) return;
-    const groupOptions = Object.values(groups)
-      .map((group) => group.name)
-      .sort((a, b) => a.localeCompare(b));
-    const hint = groupOptions.length
-      ? `Available groups: ${groupOptions.join(", ")}`
-      : "No groups available.";
-    const input = prompt(`Move to group (leave blank for root).\n${hint}`);
-    if (input === null) return;
-    const trimmed = input.trim();
-    const targetGroup = trimmed
-      ? Object.values(groups).find((group) => group.name === trimmed)
-      : null;
-    if (trimmed && !targetGroup) {
-      alert("Group not found. Please enter an existing group name.");
-      return;
-    }
+    setIsChangeParentModalOpen(true);
+  };
+
+  const handleConfirmChangeParent = (parentId: string | null) => {
     selectedIds.forEach((id) => {
       if (groups[id]) {
-        changeParent(id, true, targetGroup ? targetGroup.id : null);
+        changeParent(id, true, parentId);
       } else if (entities[id]) {
-        changeParent(id, false, targetGroup ? targetGroup.id : null);
+        changeParent(id, false, parentId);
       }
     });
+    setIsChangeParentModalOpen(false);
   };
 
   const handleRenameClick = () => {
     if (selectedIds.size !== 1) return;
     const [onlyId] = Array.from(selectedIds);
-    const group = groups[onlyId];
-    const entity = entities[onlyId];
-    const currentName = group?.name || entity?.name || "";
-    const nextName = prompt("New name:", currentName);
-    if (!nextName) return;
-    if (group) {
-      updateGroup(onlyId, { name: nextName });
-    } else if (entity) {
-      updateEntity(onlyId, { name: nextName });
-    }
+    setRenameTargetId(onlyId);
   };
 
   const collectEntityIdsFromGroup = (groupId: string, target: Set<string>) => {
@@ -633,10 +779,21 @@ export const GeometryExplorer = () => {
     );
   };
 
-  const handleColorClick = () => {
-    if (selectedIds.size === 0) return;
-    colorInputRef.current?.click();
-  };
+  const selectedColor = useMemo(() => {
+    for (const id of selectedIds) {
+      const entity = entities[id];
+      if (entity) return entity.color;
+    }
+    for (const id of selectedIds) {
+      const group = groups[id];
+      if (!group) continue;
+      const entityIds = new Set<string>();
+      collectEntityIdsFromGroup(id, entityIds);
+      const firstId = entityIds.values().next().value as string | undefined;
+      if (firstId && entities[firstId]) return entities[firstId].color;
+    }
+    return "#ffffff";
+  }, [selectedIds, entities, groups]);
 
   const handleColorChange = (event: ChangeEvent<HTMLInputElement>) => {
     const nextColor = event.target.value;
@@ -668,14 +825,6 @@ export const GeometryExplorer = () => {
         updateEntity(id, { visible: nextVisible });
       }
     });
-  };
-
-  const handleImportClick = () => {
-    importInputRef.current?.click();
-  };
-
-  const handleImportEntitiesClick = () => {
-    importEntitiesInputRef.current?.click();
   };
 
   const serializeEntity = (entity: GeometryEntity) => ({
@@ -750,7 +899,10 @@ export const GeometryExplorer = () => {
 
   const handleExportClick = () => {
     if (Object.keys(groups).length === 0 && Object.keys(entities).length === 0) {
-      alert("No geometry available to export.");
+      setAlertModal({
+        title: "Export",
+        message: "No geometry available to export.",
+      });
       return;
     }
     setIsExportModalOpen(true);
@@ -771,7 +923,10 @@ export const GeometryExplorer = () => {
         : collectSelectedExportItems();
 
     if (items.length === 0) {
-      alert("No matching items to export.");
+      setAlertModal({
+        title: "Export",
+        message: "No matching items to export.",
+      });
       return;
     }
 
@@ -795,168 +950,6 @@ export const GeometryExplorer = () => {
     setIsExportModalOpen(false);
   };
 
-  const handleImportFile = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) return;
-
-    let parsed: any;
-    try {
-      parsed = JSON.parse(await file.text());
-    } catch (error) {
-      alert("Failed to parse Blitz file. Please select a valid JSON export.");
-      return;
-    }
-
-    if (!parsed?.trajectories || !Array.isArray(parsed.trajectories)) {
-      alert('Invalid Blitz file. Expected a "trajectories" array.');
-      return;
-    }
-
-    parsed.trajectories.forEach((trajectory: any, trajectoryIndex: number) => {
-      const groupId = `group-${uuidv4()}`;
-      const groupName =
-        trajectory?._name || `Trajectory ${trajectoryIndex + 1}`;
-      const groupVisible = trajectory?._isVisible ?? true;
-      const color = trajectory?._color || "#00D084";
-
-      const getControlPointPosition = (controlPoint: any) => {
-        const x = typeof controlPoint?._x === "number" ? controlPoint._x : 0;
-        const y = typeof controlPoint?._y === "number" ? controlPoint._y : 0;
-        return [x, y, 0] as [number, number, number];
-      };
-
-      const getHandlePosition = (
-        controlPoint: any,
-        handleKey: "_handleIn" | "_handleOut"
-      ) => {
-        const base = getControlPointPosition(controlPoint);
-        const handle = controlPoint?.[handleKey];
-        const r = typeof handle?._r === "number" ? handle._r : 0;
-        const theta = typeof handle?._theta === "number" ? handle._theta : 0;
-        if (!handle) return base;
-        return [
-          base[0] + r * Math.cos(theta),
-          base[1] + r * Math.sin(theta),
-          base[2],
-        ] as [number, number, number];
-      };
-
-      addGroup({
-        id: groupId,
-        name: groupName,
-        parentId: undefined,
-        visible: groupVisible,
-      });
-
-      const controlPoints = Array.isArray(trajectory?._controlPoints)
-        ? trajectory._controlPoints
-        : [];
-      controlPoints.forEach((controlPoint: any, pointIndex: number) => {
-        const pointName =
-          controlPoint?._name || `Control Point ${pointIndex + 1}`;
-        const position = getControlPointPosition(controlPoint);
-
-        addEntity({
-          id: `entity-${uuidv4()}`,
-          parentId: groupId,
-          name: pointName,
-          type: "point",
-          visible: true,
-          color,
-          opacity: 1,
-          coordinateSpace: "plot",
-          visibleIfOutsideGraph: true,
-          data: {
-            position,
-            radius: 0.05,
-            shape: "sphere",
-          },
-        });
-      });
-
-      for (let i = 0; i < controlPoints.length - 1; i += 1) {
-        const startPoint = controlPoints[i];
-        const endPoint = controlPoints[i + 1];
-        const start = getControlPointPosition(startPoint);
-        const end = getControlPointPosition(endPoint);
-        const control1 = getHandlePosition(startPoint, "_handleOut");
-        const control2 = getHandlePosition(endPoint, "_handleIn");
-
-        addEntity({
-          id: `entity-${uuidv4()}`,
-          parentId: groupId,
-          name: `${groupName} Bezier ${i + 1}`,
-          type: "cubic-bezier",
-          visible: true,
-          color,
-          opacity: 1,
-          coordinateSpace: "plot",
-          visibleIfOutsideGraph: true,
-          data: {
-            start,
-            control1,
-            control2,
-            end,
-            thickness: 2,
-            style: "solid",
-          },
-        });
-      }
-    });
-  };
-
-  const handleImportEntitiesFile = async (
-    event: ChangeEvent<HTMLInputElement>
-  ) => {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) return;
-
-    let parsed: any;
-    try {
-      parsed = JSON.parse(await file.text());
-    } catch (error) {
-      alert("Failed to parse entity file. Please select valid JSON.");
-      return;
-    }
-
-    if (!parsed?.items || !Array.isArray(parsed.items)) {
-      alert('Invalid entity file. Expected an "items" array.');
-      return;
-    }
-
-    const importItem = (item: any, parentId?: string) => {
-      if (item?.type === "group") {
-        const groupId = `group-${uuidv4()}`;
-        addGroup({
-          id: groupId,
-          name: item.name || "Imported Group",
-          parentId,
-          visible: item.visible ?? true,
-        });
-        const children = Array.isArray(item.children) ? item.children : [];
-        children.forEach((child: any) => importItem(child, groupId));
-      } else if (item?.type === "entity") {
-        const entity = item.entity;
-        if (!entity || !entity.type) return;
-        addEntity({
-          id: `entity-${uuidv4()}`,
-          parentId,
-          name: entity.name || "Imported Entity",
-          type: entity.type,
-          visible: entity.visible ?? true,
-          color: entity.color || "#ffffff",
-          opacity: entity.opacity ?? 1,
-          coordinateSpace: entity.coordinateSpace || "plot",
-          visibleIfOutsideGraph: entity.visibleIfOutsideGraph ?? true,
-          data: entity.data ?? {},
-        });
-      }
-    };
-
-    parsed.items.forEach((item: any) => importItem(item));
-  };
 
   return (
     <div className="space-y-2">
@@ -988,167 +981,202 @@ export const GeometryExplorer = () => {
         onExport={handleExport}
         defaultName="geometry-export"
       />
-      <div className="space-y-2 pb-4">
-        <button
-          onClick={handleImportClick}
-          className="w-full py-2 rounded text-[10px] font-bold uppercase border bg-surface text-muted-foreground border-border hover:text-white transition-colors"
-        >
-          Import from Blitz
-        </button>
-        <input
-          ref={importInputRef}
-          type="file"
-          accept={BLITZ_FILE_EXTENSION}
-          className="hidden"
-          onChange={handleImportFile}
-        />
-        <button
-          onClick={handleImportEntitiesClick}
-          className="w-full py-2 rounded text-[10px] font-bold uppercase border bg-surface text-muted-foreground border-border hover:text-white transition-colors"
-        >
-          Import Entities
-        </button>
-        <input
-          ref={importEntitiesInputRef}
-          type="file"
-          accept=".json"
-          className="hidden"
-          onChange={handleImportEntitiesFile}
-        />
-      </div>
-      <div className="flex justify-between items-center px-1 ">
-        <span className="text-xs font-bold text-muted-foreground uppercase">
-          Hierarchy
-        </span>
-      </div>
+      <ChangeParentModal
+        isOpen={isChangeParentModalOpen}
+        onClose={() => setIsChangeParentModalOpen(false)}
+        onConfirm={handleConfirmChangeParent}
+        groups={Object.values(groups)
+          .map((group) => ({ id: group.id, name: group.name }))
+          .sort((a, b) => a.name.localeCompare(b.name))}
+      />
+      <TextInputModal
+        isOpen={isCreateGroupModalOpen}
+        onClose={() => setIsCreateGroupModalOpen(false)}
+        onConfirm={(value) => {
+          createGroup(value);
+          setIsCreateGroupModalOpen(false);
+        }}
+        title="Create Group"
+        label="Group Name"
+        confirmLabel="Create"
+        placeholder="Group name..."
+      />
+      <TextInputModal
+        isOpen={!!renameTargetId}
+        onClose={() => setRenameTargetId(null)}
+        onConfirm={(value) => {
+          if (!renameTargetId) return;
+          if (groups[renameTargetId]) {
+            updateGroup(renameTargetId, { name: value });
+          } else if (entities[renameTargetId]) {
+            updateEntity(renameTargetId, { name: value });
+          }
+          setRenameTargetId(null);
+        }}
+        title="Rename"
+        label="New Name"
+        confirmLabel="Save"
+        defaultValue={
+          renameTargetId
+            ? groups[renameTargetId]?.name || entities[renameTargetId]?.name || ""
+            : ""
+        }
+        placeholder="Name..."
+      />
+      <AlertModal
+        isOpen={!!alertModal}
+        onClose={() => setAlertModal(null)}
+        title={alertModal?.title ?? ""}
+        message={alertModal?.message ?? ""}
+      />
       <div className="flex flex-wrap items-center gap-1 px-1">
         <div className="flex items-center gap-1">
-          <button
-            onClick={handleToggleMultiSelect}
-            className={clsx(
-              "p-1.5 rounded transition-colors",
-              multiSelectEnabled || shiftPressed
-                ? "bg-accent text-accent-foreground"
-                : "text-muted-foreground hover:text-white hover:bg-surface-highlight"
-            )}
-            title={
-              multiSelectEnabled || shiftPressed
-                ? "Multi-select enabled"
-                : "Single-select mode"
-            }
-          >
-            <Layers size={16} />
-          </button>
-          <button
-            onClick={handleExportClick}
-            className="p-1.5 hover:bg-surface-highlight rounded text-muted-foreground hover:text-white transition-colors"
-            title="Export Entities"
-          >
-            <Download size={16} />
-          </button>
-          <button
-            onClick={handleCreateGroup}
-            className="p-1.5 hover:bg-surface-highlight rounded text-muted-foreground hover:text-white transition-colors"
-            title="New Group"
-          >
-            <FolderPlus size={16} />
-          </button>
+          <div className="relative group">
+            <button
+              onClick={handleToggleMultiSelect}
+              className={clsx(
+                "p-1.5 rounded transition-colors",
+                multiSelectEnabled || shiftPressed
+                  ? "bg-accent text-accent-foreground"
+                  : "text-muted-foreground hover:text-white hover:bg-surface-highlight"
+              )}
+            >
+              <Layers size={16} />
+            </button>
+            <Tooltip
+              label={
+                multiSelectEnabled || shiftPressed
+                  ? "Multi-select enabled"
+                  : "Single-select mode"
+              }
+            />
+          </div>
+          <div className="relative group">
+            <button
+              onClick={handleExportClick}
+              className="p-1.5 hover:bg-surface-highlight rounded text-muted-foreground hover:text-white transition-colors"
+            >
+              <Download size={16} />
+            </button>
+            <Tooltip label="Export Entities" />
+          </div>
+          <div className="relative group">
+            <button
+              onClick={handleCreateGroup}
+              className="p-1.5 hover:bg-surface-highlight rounded text-muted-foreground hover:text-white transition-colors"
+            >
+              <FolderPlus size={16} />
+            </button>
+            <Tooltip label="New Group" />
+          </div>
         </div>
         <div className="flex-1" />
         <div className="flex items-center gap-1">
-          <button
-            onClick={handleToggleVisibility}
-            disabled={selectedIds.size === 0}
-            className={clsx(
-              "p-1.5 rounded transition-colors",
-              selectedIds.size > 0
-                ? "text-muted-foreground hover:text-white hover:bg-surface-highlight"
-                : "text-muted-foreground/30 cursor-not-allowed"
-            )}
-            title={
-              selectedIds.size > 0 &&
+          <div className="relative group">
+            <button
+              onClick={handleToggleVisibility}
+              disabled={selectedIds.size === 0}
+              className={clsx(
+                "p-1.5 rounded transition-colors",
+                selectedIds.size > 0
+                  ? "text-muted-foreground hover:text-white hover:bg-surface-highlight"
+                  : "text-muted-foreground/30 cursor-not-allowed"
+              )}
+            >
+              {selectedIds.size > 0 &&
               Array.from(selectedIds).some((id) =>
                 groups[id]
                   ? !groups[id].visible
                   : entities[id]
                   ? !entities[id].visible
                   : false
-              )
-                ? "Show Selected"
-                : "Hide Selected"
-            }
-          >
-            {selectedIds.size > 0 &&
-            Array.from(selectedIds).some((id) =>
-              groups[id]
-                ? !groups[id].visible
-                : entities[id]
-                ? !entities[id].visible
-                : false
-            ) ? (
-              <Eye size={16} />
-            ) : (
-              <EyeOff size={16} />
-            )}
-          </button>
-          <button
-            onClick={handleRenameClick}
-            disabled={selectedIds.size !== 1}
-            className={clsx(
-              "p-1.5 rounded transition-colors",
-              selectedIds.size === 1
-                ? "text-muted-foreground hover:text-white hover:bg-surface-highlight"
-                : "text-muted-foreground/30 cursor-not-allowed"
-            )}
-            title="Rename"
-          >
-            <Pencil size={16} />
-          </button>
-          <button
-            onClick={handleColorClick}
-            disabled={selectedIds.size === 0}
-            className={clsx(
-              "p-1.5 rounded transition-colors",
-              selectedIds.size > 0
-                ? "text-muted-foreground hover:text-white hover:bg-surface-highlight"
-                : "text-muted-foreground/30 cursor-not-allowed"
-            )}
-            title="Change Color"
-          >
-            <Palette size={16} />
-          </button>
-          <button
-            onClick={handleChangeParentClick}
-            disabled={selectedIds.size === 0}
-            className={clsx(
-              "p-1.5 rounded transition-colors",
-              selectedIds.size > 0
-                ? "text-muted-foreground hover:text-white hover:bg-surface-highlight"
-                : "text-muted-foreground/30 cursor-not-allowed"
-            )}
-            title="Change Parent"
-          >
-            <Folder size={16} />
-          </button>
-          <button
-            onClick={handleDeleteClick}
-            disabled={selectedIds.size === 0}
-            className={clsx(
-              "p-1.5 hover:bg-red-500/20 rounded transition-colors",
-              selectedIds.size > 0
-                ? "text-red-400 hover:text-red-300 cursor-pointer"
-                : "text-muted-foreground/30 cursor-not-allowed"
-            )}
-            title="Delete Selected"
-          >
-            <Trash2 size={16} />
-          </button>
-          <input
-            ref={colorInputRef}
-            type="color"
-            className="hidden"
-            onChange={handleColorChange}
-          />
+              ) ? (
+                <Eye size={16} />
+              ) : (
+                <EyeOff size={16} />
+              )}
+            </button>
+            <Tooltip
+              label={
+                selectedIds.size > 0 &&
+                Array.from(selectedIds).some((id) =>
+                  groups[id]
+                    ? !groups[id].visible
+                    : entities[id]
+                    ? !entities[id].visible
+                    : false
+                )
+                  ? "Show Selected"
+                  : "Hide Selected"
+              }
+            />
+          </div>
+          <div className="relative group">
+            <button
+              onClick={handleRenameClick}
+              disabled={selectedIds.size !== 1}
+              className={clsx(
+                "p-1.5 rounded transition-colors",
+                selectedIds.size === 1
+                  ? "text-muted-foreground hover:text-white hover:bg-surface-highlight"
+                  : "text-muted-foreground/30 cursor-not-allowed"
+              )}
+            >
+              <Pencil size={16} />
+            </button>
+            <Tooltip label="Rename" />
+          </div>
+          <div className="relative group">
+            <button
+              disabled={selectedIds.size === 0}
+              className={clsx(
+                "p-1.5 rounded transition-colors relative",
+                selectedIds.size > 0
+                  ? "text-muted-foreground hover:text-white hover:bg-surface-highlight"
+                  : "text-muted-foreground/30 cursor-not-allowed"
+              )}
+            >
+              <Palette size={16} />
+              <input
+                type="color"
+                value={selectedColor}
+                onChange={handleColorChange}
+                disabled={selectedIds.size === 0}
+                className="absolute inset-0 opacity-0 cursor-pointer"
+              />
+            </button>
+            <Tooltip label="Change Color" />
+          </div>
+          <div className="relative group">
+            <button
+              onClick={handleChangeParentClick}
+              disabled={selectedIds.size === 0}
+              className={clsx(
+                "p-1.5 rounded transition-colors",
+                selectedIds.size > 0
+                  ? "text-muted-foreground hover:text-white hover:bg-surface-highlight"
+                  : "text-muted-foreground/30 cursor-not-allowed"
+              )}
+            >
+              <Folder size={16} />
+            </button>
+            <Tooltip label="Change Parent" />
+          </div>
+          <div className="relative group">
+            <button
+              onClick={handleDeleteClick}
+              disabled={selectedIds.size === 0}
+              className={clsx(
+                "p-1.5 hover:bg-red-500/20 rounded transition-colors",
+                selectedIds.size > 0
+                  ? "text-red-400 hover:text-red-300 cursor-pointer"
+                  : "text-muted-foreground/30 cursor-not-allowed"
+              )}
+            >
+              <Trash2 size={16} />
+            </button>
+            <Tooltip label="Delete Selected" />
+          </div>
         </div>
       </div>
 
@@ -1196,152 +1224,6 @@ export const GeometryExplorer = () => {
         </DndContext>
       </div>
 
-      <div className="pt-3 border-t border-border space-y-3">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-bold text-muted-foreground uppercase">
-            Trails
-          </span>
-        </div>
-
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            onClick={() => setTrailSettings({ mode: "controllable" })}
-            className={clsx(
-              "py-2 rounded text-[10px] font-bold uppercase border transition-colors",
-              trailSettings.mode === "controllable"
-                ? "bg-accent text-accent-foreground border-accent"
-                : "bg-surface text-muted-foreground border-border hover:text-white"
-            )}
-          >
-            Controllable
-          </button>
-          <button
-            onClick={() => setTrailSettings({ mode: "temporary" })}
-            className={clsx(
-              "py-2 rounded text-[10px] font-bold uppercase border transition-colors",
-              trailSettings.mode === "temporary"
-                ? "bg-accent text-accent-foreground border-accent"
-                : "bg-surface text-muted-foreground border-border hover:text-white"
-            )}
-          >
-            Temporary
-          </button>
-        </div>
-
-        {trailSettings.mode === "controllable" && (
-          <div className="space-y-2">
-            {trailSettings.controllablePaused ? (
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() =>
-                    setTrailSettings({
-                      controllablePaused: false,
-                      breakNextSegment: trailSettings.display === "segments",
-                    })
-                  }
-                  className="py-2 rounded text-[10px] font-bold uppercase border bg-accent text-accent-foreground border-accent hover:brightness-110 transition-colors"
-                >
-                  Continue (Jump)
-                </button>
-                <button
-                  onClick={() =>
-                    setTrailSettings({
-                      controllablePaused: false,
-                      breakNextSegment: false,
-                    })
-                  }
-                  className="py-2 rounded text-[10px] font-bold uppercase border bg-surface text-muted-foreground border-border hover:text-white transition-colors"
-                >
-                  Continue (No Jump)
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => setTrailSettings({ controllablePaused: true })}
-                className="w-full py-2 rounded text-[10px] font-bold uppercase border bg-surface text-muted-foreground border-border hover:text-white transition-colors"
-              >
-                Stop
-              </button>
-            )}
-            <button
-              onClick={clearTrail}
-              className="w-full py-2 rounded text-[10px] font-bold uppercase border border-destructive bg-destructive text-destructive-foreground hover:brightness-110 transition-colors"
-            >
-              Clear
-            </button>
-          </div>
-        )}
-
-        {trailSettings.mode === "temporary" && (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <input
-                type="number"
-                min={1}
-                value={trailSettings.tempLength}
-                onChange={(e) =>
-                  setTrailSettings({ tempLength: Number(e.target.value) || 1 })
-                }
-                className="w-20 bg-surface border border-border rounded px-2 py-1 text-xs focus:outline-none focus:border-accent"
-              />
-              <select
-                value={trailSettings.tempUnit}
-                onChange={(e) =>
-                  setTrailSettings({
-                    tempUnit: e.target.value as typeof trailSettings.tempUnit,
-                  })
-                }
-                className="bg-surface border border-border text-xs rounded px-2 py-1 outline-none focus:border-accent"
-              >
-                <option value="updates">Updates</option>
-                <option value="seconds">Seconds</option>
-              </select>
-            </div>
-            <p className="text-[10px] text-muted-foreground">
-              Tail fades out as it ages until disappearing.
-            </p>
-          </div>
-        )}
-
-        <div className="space-y-1">
-          <span className="text-[10px] font-bold text-muted-foreground uppercase">
-            Display
-          </span>
-          <div className="grid grid-cols-3 gap-2">
-            {(["none", "points", "segments"] as const).map((mode) => (
-              <button
-                key={mode}
-                onClick={() => setTrailSettings({ display: mode })}
-                className={clsx(
-                  "py-2 rounded text-[10px] font-bold uppercase border transition-colors",
-                  trailSettings.display === mode
-                    ? "bg-accent text-accent-foreground border-accent"
-                    : "bg-surface text-muted-foreground border-border hover:text-white"
-                )}
-              >
-                {mode}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="space-y-1">
-          <span className="text-[10px] font-bold text-muted-foreground uppercase">
-            Color
-          </span>
-          <div className="flex items-center gap-2">
-            <input
-              type="color"
-              value={trailSettings.color}
-              onChange={(e) => setTrailSettings({ color: e.target.value })}
-              className="h-8 w-12 cursor-pointer rounded border border-border bg-surface"
-            />
-            <span className="text-[10px] text-muted-foreground">
-              {trailSettings.color}
-            </span>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };

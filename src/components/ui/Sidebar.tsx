@@ -1,10 +1,12 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { ConnectionPanel } from "./ConnectionPanel";
 import { GeometryExplorer } from "./GeometryExplorer";
+import { TrailPanel } from "./TrailPanel";
 import { CameraPanel } from "./CameraPanel";
 import { GridPanel } from "./GridPanel";
 import { RobotSettingsPanel } from "./RobotSettingsPanel";
 import { AddGeometryPanel } from "./AddGeometryPanel";
+import { ImportGeometryPanel } from "./ImportGeometryPanel";
 import { useAppStore } from "../../store/useAppStore";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
@@ -122,14 +124,14 @@ export const Sidebar = () => {
         </div>
 
         {/* Content Scrollable */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-8">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-6">
           <section>
             <button
               type="button"
               onClick={() => setIsConnectionOpen((prev) => !prev)}
               className="w-full flex items-center justify-between text-xs font-bold text-muted-foreground uppercase mb-4"
             >
-              <span>Connection</span>
+              <span>Link</span>
               {isConnectionOpen ? (
                 <ChevronDown size={14} />
               ) : (
@@ -145,7 +147,7 @@ export const Sidebar = () => {
               onClick={() => setIsViewControlOpen((prev) => !prev)}
               className="w-full flex items-center justify-between text-xs font-bold text-muted-foreground uppercase mb-4"
             >
-              <span>View Control</span>
+              <span>View</span>
               {isViewControlOpen ? (
                 <ChevronDown size={14} />
               ) : (
@@ -153,10 +155,25 @@ export const Sidebar = () => {
               )}
             </button>
             {isViewControlOpen && (
-              <div className="space-y-8">
-                <CameraPanel />
-                <GridPanel />
-                <RobotSettingsPanel />
+              <div className="space-y-6">
+                <div className="space-y-3">
+                  <div className="text-[10px] font-bold text-muted-foreground uppercase">
+                    Camera
+                  </div>
+                  <CameraPanel />
+                </div>
+                <div className="space-y-3">
+                  <div className="text-[10px] font-bold text-muted-foreground uppercase">
+                    Grid
+                  </div>
+                  <GridPanel />
+                </div>
+                <div className="space-y-3">
+                  <div className="text-[10px] font-bold text-muted-foreground uppercase">
+                    Robot
+                  </div>
+                  <RobotSettingsPanel />
+                </div>
               </div>
             )}
           </section>
@@ -167,7 +184,7 @@ export const Sidebar = () => {
               onClick={() => setIsGeometryOpen((prev) => !prev)}
               className="w-full flex items-center justify-between text-xs font-bold text-muted-foreground uppercase mb-4"
             >
-              <span>Geometry Tools</span>
+              <span>Model</span>
               {isGeometryOpen ? (
                 <ChevronDown size={14} />
               ) : (
@@ -176,8 +193,25 @@ export const Sidebar = () => {
             </button>
             {isGeometryOpen && (
               <div className="space-y-6">
-                <AddGeometryPanel />
-                <GeometryExplorer />
+                <div className="space-y-3">
+                  <div className="text-[10px] font-bold text-muted-foreground uppercase">
+                    Create
+                  </div>
+                  <AddGeometryPanel />
+                  <ImportGeometryPanel />
+                </div>
+                <div className="space-y-3">
+                  <div className="text-[10px] font-bold text-muted-foreground uppercase">
+                    Explore
+                  </div>
+                  <GeometryExplorer />
+                </div>
+                <div className="space-y-3">
+                  <div className="text-[10px] font-bold text-muted-foreground uppercase">
+                    Record
+                  </div>
+                  <TrailPanel />
+                </div>
               </div>
             )}
           </section>

@@ -848,7 +848,7 @@ export const useAppStore = create<AppState>((set) => ({
     mode: "controllable",
     display: "segments",
     color: "#f59e0b",
-    controllablePaused: false,
+    controllablePaused: true,
     breakNextSegment: false,
     tempLength: 120,
     tempUnit: "updates",

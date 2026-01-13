@@ -86,6 +86,10 @@ export const CameraManager = () => {
     useEffect(() => {
         const handleWheel = (e: WheelEvent) => {
             if (cameraMode === 'free') {
+                const canvas = document.getElementById('canvas-container');
+                if (canvas && !canvas.contains(e.target as Node)) {
+                    return;
+                }
                 const delta = e.deltaY;
                 const speedChange = delta > 0 ? -1 : 1; // Scroll up = Faster, Down = Slower
                 const newSpeed = Math.max(1, Math.min(100, cameraSpeed + speedChange));

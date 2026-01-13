@@ -27,6 +27,10 @@ export class MockRobotConnectionService {
     };
 
     public connect() {
+        if (this.updateInterval !== null) {
+            clearInterval(this.updateInterval);
+            this.updateInterval = null;
+        }
         this.updateStatus('connected');
 
         // Simulation loop @ ~20Hz (50ms)
@@ -38,7 +42,7 @@ export class MockRobotConnectionService {
     }
 
     public disconnect() {
-        if (this.updateInterval) {
+        if (this.updateInterval !== null) {
             clearInterval(this.updateInterval);
             this.updateInterval = null;
         }

@@ -2,40 +2,7 @@ import { useState, useEffect } from 'react';
 import { Pause, Play, Trash2 } from 'lucide-react';
 import clsx from 'clsx';
 import { useAppStore } from '../../store/useAppStore';
-
-const NumberInput = ({ value, onChange }: { value: number; onChange: (val: number) => void }) => {
-    const [localVal, setLocalVal] = useState(value.toString());
-
-    useEffect(() => {
-        setLocalVal(value.toString());
-    }, [value]);
-
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const val = e.target.value;
-        setLocalVal(val);
-
-        const parsed = parseFloat(val);
-        if (!isNaN(parsed)) {
-            onChange(parsed);
-        }
-    };
-
-    const handleBlur = () => {
-        setLocalVal(value.toString());
-    };
-
-    return (
-        <input
-            type="number"
-            min={1}
-            step={1}
-            value={localVal}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            className="w-24 bg-background border border-border rounded px-2 py-1 text-xs"
-        />
-    );
-};
+import { NumberField } from './NumberField';
 
 export const GeometryTrailPanel = () => {
     const { trailSettings, setTrailSettings, clearTrail } = useAppStore();
@@ -108,9 +75,12 @@ export const GeometryTrailPanel = () => {
                 <div className="space-y-2">
                     <div className="text-[10px] text-muted-foreground uppercase">Length</div>
                     <div className="flex items-center gap-2">
-                        <NumberInput
+                        <NumberField
                             value={trailSettings.tempLength}
                             onChange={(val) => setTrailSettings({ tempLength: Math.max(1, val) })}
+                            min={1}
+                            step={1}
+                            className="w-24"
                         />
                         <div className="flex gap-1">
                             <button

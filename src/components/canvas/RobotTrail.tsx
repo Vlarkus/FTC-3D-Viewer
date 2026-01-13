@@ -2,17 +2,9 @@ import { useEffect, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { BufferAttribute, BufferGeometry, Color } from 'three';
 import { telemetryStore } from '../../store/telemetryStore';
+import { trailStore, type TrailMarker, type TrailPoint } from '../../store/trailStore';
 import { useCoordinateMapper } from '../../hooks/useCoordinateMapper';
 import { useAppStore } from '../../store/useAppStore';
-
-type TrailPoint = {
-    x: number;
-    y: number;
-    z: number;
-    t: number;
-};
-
-type TrailMarker = TrailPoint | { break: true };
 
 const epsilon = 1e-4;
 const maxTrailPoints = 10000;
@@ -31,6 +23,7 @@ export const RobotTrail = () => {
     useEffect(() => {
         trailRef.current = [];
         lastPointRef.current = null;
+        trailStore.reset();
     }, [trailClearToken, trailSettings.mode, trailSettings.tempUnit]);
 
     useEffect(() => {
@@ -38,13 +31,12 @@ export const RobotTrail = () => {
     }, [trailSettings.color]);
 
     useFrame((state) => {
+        let didMutate = false;
         const rawData = telemetryStore.getState() as any;
 
         const x = telemetryMapping.x ? (rawData[telemetryMapping.x] ?? 0) : 0;
         const y = telemetryMapping.y ? (rawData[telemetryMapping.y] ?? 0) : 0;
         const z = telemetryMapping.z ? (rawData[telemetryMapping.z] ?? 0) : 0;
-
-        const [vx, vy, vz] = mapPoint(x, y, z);
 
         const shouldAddPoint = trailSettings.mode === 'controllable'
             ? !trailSettings.controllablePaused
@@ -53,28 +45,31 @@ export const RobotTrail = () => {
         if (shouldAddPoint) {
             const last = lastPointRef.current;
             const isSame = last
-                && Math.abs(last[0] - vx) < epsilon
-                && Math.abs(last[1] - vy) < epsilon
-                && Math.abs(last[2] - vz) < epsilon;
+                && Math.abs(last[0] - x) < epsilon
+                && Math.abs(last[1] - y) < epsilon
+                && Math.abs(last[2] - z) < epsilon;
 
             if (!isSame) {
                 if (trailSettings.breakNextSegment) {
                     trailRef.current.push({ break: true });
                     setTrailSettings({ breakNextSegment: false });
+                    didMutate = true;
                 }
 
                 trailRef.current.push({
-                    x: vx,
-                    y: vy,
-                    z: vz,
+                    x,
+                    y,
+                    z,
                     t: state.clock.elapsedTime
                 });
-                lastPointRef.current = [vx, vy, vz];
+                lastPointRef.current = [x, y, z];
+                didMutate = true;
             }
         }
 
         if (trailRef.current.length > maxTrailPoints) {
             trailRef.current.splice(0, trailRef.current.length - maxTrailPoints);
+            didMutate = true;
         }
 
         if (trailSettings.mode === 'temporary') {
@@ -86,17 +81,26 @@ export const RobotTrail = () => {
                     pointsCount += 1;
                     if (pointsCount > maxPoints) {
                         trailRef.current.splice(0, i + 1);
+                        didMutate = true;
                         break;
                     }
                 }
             } else {
                 const now = state.clock.elapsedTime;
                 const windowSeconds = Math.max(0.05, trailSettings.tempLength);
-                trailRef.current = trailRef.current.filter(point => {
+                const nextTrail = trailRef.current.filter(point => {
                     if ('break' in point) return true;
                     return (now - point.t) <= windowSeconds;
                 });
+                if (nextTrail.length !== trailRef.current.length) {
+                    trailRef.current = nextTrail;
+                    didMutate = true;
+                }
             }
+        }
+
+        if (didMutate) {
+            trailStore.setState([...trailRef.current]);
         }
 
         if (trailSettings.display === 'none') {
@@ -135,10 +139,11 @@ export const RobotTrail = () => {
 
             for (let i = 0; i < pointCount; i += 1) {
                 const point = pointData[i];
+                const [vx, vy, vz] = mapPoint(point.x, point.y, point.z);
                 const index = i * 3;
-                positions[index] = point.x;
-                positions[index + 1] = point.y;
-                positions[index + 2] = point.z;
+                positions[index] = vx;
+                positions[index + 1] = vy;
+                positions[index + 2] = vz;
 
                 const alpha = getAlpha(i, point);
                 const color = baseTrailColor.current.clone().multiplyScalar(alpha);
@@ -173,9 +178,11 @@ export const RobotTrail = () => {
             const color = baseTrailColor.current.clone().multiplyScalar(alpha);
             if (lastPoint) {
                 const lastColor = baseTrailColor.current.clone().multiplyScalar(getAlpha(lastIndex, lastPoint));
+                const [lx, ly, lz] = mapPoint(lastPoint.x, lastPoint.y, lastPoint.z);
+                const [vx, vy, vz] = mapPoint(marker.x, marker.y, marker.z);
                 segmentPositions.push(
-                    lastPoint.x, lastPoint.y, lastPoint.z,
-                    marker.x, marker.y, marker.z
+                    lx, ly, lz,
+                    vx, vy, vz
                 );
                 segmentColors.push(
                     lastColor.r,
