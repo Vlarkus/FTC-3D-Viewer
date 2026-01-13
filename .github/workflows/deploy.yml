@@ -2,7 +2,7 @@ name: Deploy static content to GitHub Pages
 
 on:
   push:
-    branches: ["main"]
+    branches: ["master"]
   workflow_dispatch:
 
 permissions:
@@ -38,7 +38,7 @@ jobs:
         run: npm run build
 
       - name: Add custom domain
-        run: echo "ftc3dviewer.vlarkus.com" > dist/CNAME
+        run: echo "livetracer.vlarkus.com" > dist/CNAME
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v4
