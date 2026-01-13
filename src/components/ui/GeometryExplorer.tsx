@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, type ChangeEvent } from "react";
+import { useState, useEffect, useMemo, useRef, type ChangeEvent } from "react";
 import { useAppStore, type GeometryEntity } from "../../store/useAppStore";
 import { AlertModal } from "./AlertModal";
 import {
@@ -606,8 +606,6 @@ export const GeometryExplorer = () => {
   const entities = useAppStore((state) => state.entities);
   const groups = useAppStore((state) => state.groups);
   const createGroup = useAppStore((state) => state.createGroup);
-  const addGroup = useAppStore((state) => state.addGroup);
-  const addEntity = useAppStore((state) => state.addEntity);
   const updateGroup = useAppStore((state) => state.updateGroup);
   const updateEntity = useAppStore((state) => state.updateEntity);
   const removeGroup = useAppStore((state) => state.removeGroup);
@@ -628,6 +626,7 @@ export const GeometryExplorer = () => {
   const [isChangeParentModalOpen, setIsChangeParentModalOpen] = useState(false);
   const [isCreateGroupModalOpen, setIsCreateGroupModalOpen] = useState(false);
   const [renameTargetId, setRenameTargetId] = useState<string | null>(null);
+  const colorInputRef = useRef<HTMLInputElement>(null);
   const [alertModal, setAlertModal] = useState<{
     title: string;
     message: string;
@@ -809,6 +808,11 @@ export const GeometryExplorer = () => {
     entityIds.forEach((id) => updateEntity(id, { color: nextColor }));
   };
 
+  const handleColorClick = () => {
+    if (selectedIds.size === 0) return;
+    colorInputRef.current?.click();
+  };
+
   const handleToggleVisibility = () => {
     if (selectedIds.size === 0) return;
     const selectedList = Array.from(selectedIds);
@@ -898,7 +902,10 @@ export const GeometryExplorer = () => {
   };
 
   const handleExportClick = () => {
-    if (Object.keys(groups).length === 0 && Object.keys(entities).length === 0) {
+    if (
+      Object.keys(groups).length === 0 &&
+      Object.keys(entities).length === 0
+    ) {
       setAlertModal({
         title: "Export",
         message: "No geometry available to export.",
@@ -949,7 +956,6 @@ export const GeometryExplorer = () => {
     URL.revokeObjectURL(url);
     setIsExportModalOpen(false);
   };
-
 
   return (
     <div className="space-y-2">
@@ -1018,7 +1024,9 @@ export const GeometryExplorer = () => {
         confirmLabel="Save"
         defaultValue={
           renameTargetId
-            ? groups[renameTargetId]?.name || entities[renameTargetId]?.name || ""
+            ? groups[renameTargetId]?.name ||
+              entities[renameTargetId]?.name ||
+              ""
             : ""
         }
         placeholder="Name..."
@@ -1046,8 +1054,8 @@ export const GeometryExplorer = () => {
             <Tooltip
               label={
                 multiSelectEnabled || shiftPressed
-                  ? "Multi-select enabled"
-                  : "Single-select mode"
+                  ? "Multi-select"
+                  : "Single-select"
               }
             />
           </div>
@@ -1106,8 +1114,8 @@ export const GeometryExplorer = () => {
                     ? !entities[id].visible
                     : false
                 )
-                  ? "Show Selected"
-                  : "Hide Selected"
+                  ? "Show"
+                  : "Hide"
               }
             />
           </div>
@@ -1128,22 +1136,16 @@ export const GeometryExplorer = () => {
           </div>
           <div className="relative group">
             <button
+              onClick={handleColorClick}
               disabled={selectedIds.size === 0}
               className={clsx(
-                "p-1.5 rounded transition-colors relative",
+                "p-1.5 rounded transition-colors",
                 selectedIds.size > 0
                   ? "text-muted-foreground hover:text-white hover:bg-surface-highlight"
                   : "text-muted-foreground/30 cursor-not-allowed"
               )}
             >
               <Palette size={16} />
-              <input
-                type="color"
-                value={selectedColor}
-                onChange={handleColorChange}
-                disabled={selectedIds.size === 0}
-                className="absolute inset-0 opacity-0 cursor-pointer"
-              />
             </button>
             <Tooltip label="Change Color" />
           </div>
@@ -1175,10 +1177,17 @@ export const GeometryExplorer = () => {
             >
               <Trash2 size={16} />
             </button>
-            <Tooltip label="Delete Selected" />
+            <Tooltip label="Delete" />
           </div>
         </div>
       </div>
+      <input
+        ref={colorInputRef}
+        type="color"
+        value={selectedColor}
+        onChange={handleColorChange}
+        className="hidden"
+      />
 
       <div
         className="border border-border rounded bg-background/50 min-h-[200px] overflow-hidden"
@@ -1223,7 +1232,6 @@ export const GeometryExplorer = () => {
           </div>
         </DndContext>
       </div>
-
     </div>
   );
 };

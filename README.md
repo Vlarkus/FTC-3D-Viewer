@@ -1,10 +1,10 @@
-# FTC 3D Viewer (V2)
+# LiveTracer (V2)
 
 **A High-Performance 3D Debugging Environment for FTC Robotics.**
 
 ## Overview
 
-The **FTC 3D Viewer** addresses the “black box” problem of FTC robot development.  
+The **LiveTracer** addresses the “black box” problem of FTC robot development.  
 Instead of relying solely on numeric telemetry (`x: 12.0`, `y: 45.0`), the viewer provides a real-time, interactive **3D visualization environment** that exposes robot state, motion, and algorithm behavior spatially.
 
 The application renders live telemetry as geometry in a 3D scene, enabling teams to debug localization, validate trajectories, and reason about complex algorithms visually rather than abstractly.
@@ -12,7 +12,7 @@ The application renders live telemetry as geometry in a 3D scene, enabling teams
 The viewer runs entirely in the browser and connects to a lightweight Java telemetry server running on the Robot Controller.
 
 **Live DEMO application:**  
-👉 https://ftc3dviewer.vlarkus.com
+👉 https://livetracer.vlarkus.com
 Note: The web version CANNOT connect directly to a robot on the local Control Hub network because browsers block HTTPS pages from requesting data over the robot’s local HTTP endpoints. Use the locally hosted version for robot connectivity.
 
 ---
@@ -43,7 +43,7 @@ Note: The web version CANNOT connect directly to a robot on the local Control Hu
 
 ## Telemetry Server (Required)
 
-The FTC 3D Viewer **does not communicate directly with FTC SDK telemetry**.  
+The LiveTracer **does not communicate directly with FTC SDK telemetry**.  
 Instead, it connects to a lightweight **Java HTTP telemetry server** running on the Robot Controller.
 
 That server:
@@ -53,7 +53,7 @@ That server:
 
 ### Java Server Repository
 
-👉 **FTC 3D Viewer Java Server**  
+👉 **LiveTracer Java Server**  
 https://github.com/vlarkus/ftc-3d-viewer-java-server
 
 This repository contains:
@@ -98,3 +98,4 @@ Open your browser to the address shown in the terminal (typically `http://localh
 ## License
 
 MIT License. See [LICENSE](LICENSE) for details.
+

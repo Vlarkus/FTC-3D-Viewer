@@ -1,4 +1,3 @@
-import { point, segment, parametric, group } from "./services/GeometryBuilder";
 import type { GeometryConfig } from "./services/GeometryBuilder";
 
 /**

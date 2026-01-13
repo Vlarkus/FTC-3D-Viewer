@@ -25,9 +25,23 @@ export const NumberField = ({
 }: NumberFieldProps) => {
   const [localVal, setLocalVal] = React.useState(value.toString());
 
+  const getDecimals = (stepValue: number) => {
+    const stepString = stepValue.toString();
+    const dotIndex = stepString.indexOf(".");
+    if (dotIndex === -1) return 0;
+    return stepString.length - dotIndex - 1;
+  };
+
+  const formatValue = (val: number) => {
+    if (!Number.isFinite(val)) return "";
+    const decimals = getDecimals(step);
+    const fixed = decimals > 0 ? val.toFixed(decimals) : Math.round(val).toString();
+    return fixed.replace(/\.?0+$/, "");
+  };
+
   React.useEffect(() => {
-    setLocalVal(value.toString());
-  }, [value]);
+    setLocalVal(formatValue(value));
+  }, [value, step]);
 
   const clampValue = (next: number) => {
     let result = next;
@@ -39,7 +53,7 @@ export const NumberField = ({
   const commitValue = (next: number) => {
     const clamped = clampValue(next);
     onChange(clamped);
-    setLocalVal(clamped.toString());
+    setLocalVal(formatValue(clamped));
   };
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -52,7 +66,7 @@ export const NumberField = ({
   };
 
   const handleBlur = () => {
-    setLocalVal(value.toString());
+    setLocalVal(formatValue(value));
   };
 
   const handleStep = (direction: 1 | -1) => {

@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import { Pause, Play, Trash2 } from 'lucide-react';
 import clsx from 'clsx';
 import { useAppStore } from '../../store/useAppStore';

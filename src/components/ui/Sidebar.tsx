@@ -108,10 +108,10 @@ export const Sidebar = () => {
         )}
 
         {/* Header */}
-        <div className="p-4 border-b border-border flex items-center justify-between flex-shrink-0">
-          <div>
+        <div className="p-4 border-b border-border flex items-center justify-center flex-shrink-0 relative">
+          <div className="text-center">
             <h1 className="text-xl font-bold tracking-tight text-foreground">
-              FTC 3D <span className="text-accent">Viewer</span>
+              Live<span className="text-accent">Tracer</span>
             </h1>
             <p className="text-xs text-muted-foreground">Made by Vlarkus</p>
           </div>

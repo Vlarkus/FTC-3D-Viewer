@@ -129,4 +129,4 @@ export class GeometryAPI {
 }
 
 // Attach to window
-(window as any).ftc3d = GeometryAPI;
+(window as any).liveTracer = GeometryAPI;
