@@ -6,9 +6,10 @@ import { PlotBox } from './PlotBox';
 import { CameraManager } from './CameraManager';
 import { GeometryRenderer } from './GeometryRenderer';
 import { RobotTrail } from './RobotTrail';
+import { FieldModel } from './FieldModel';
 
 export const Scene = () => {
-    const { showGrid } = useAppStore();
+    const { showGrid, showFieldModel } = useAppStore();
 
     return (
         <Canvas
@@ -30,6 +31,7 @@ export const Scene = () => {
             <Environment preset="city" />
 
             {/* World */}
+            {showFieldModel && <FieldModel />}
             {showGrid && <PlotBox />}
 
             {/* Entities */}

@@ -25,6 +25,8 @@ export type LineStyle = "solid" | "dashed";
 export type TrailMode = "controllable" | "temporary";
 export type TrailDisplay = "none" | "points" | "segments";
 export type TrailLengthUnit = "updates" | "seconds";
+export type FieldSizeMode = "world" | "grid";
+export type FieldPositionMode = "grid-bottom" | "custom";
 
 export interface GeometryEntity {
   id: string;
@@ -82,6 +84,16 @@ interface AppState {
   // Grid / Plot Box
   showGrid: boolean;
   setShowGrid: (show: boolean) => void;
+  showFieldModel: boolean;
+  setShowFieldModel: (show: boolean) => void;
+  fieldSizeMode: FieldSizeMode;
+  setFieldSizeMode: (mode: FieldSizeMode) => void;
+  fieldSizeValue: number;
+  setFieldSizeValue: (value: number) => void;
+  fieldPositionMode: FieldPositionMode;
+  setFieldPositionMode: (mode: FieldPositionMode) => void;
+  fieldPosition: { x: number; y: number; z: number };
+  setFieldPosition: (position: { x: number; y: number; z: number }) => void;
   axes: { x: AxisSettings; y: AxisSettings; z: AxisSettings };
   setAxisSettings: (
     axis: "x" | "y" | "z",
@@ -172,6 +184,16 @@ export const useAppStore = create<AppState>((set) => ({
   // Grid
   showGrid: true,
   setShowGrid: (show) => set({ showGrid: show }),
+  showFieldModel: false,
+  setShowFieldModel: (show) => set({ showFieldModel: show }),
+  fieldSizeMode: "grid",
+  setFieldSizeMode: (mode) => set({ fieldSizeMode: mode }),
+  fieldSizeValue: 1,
+  setFieldSizeValue: (value) => set({ fieldSizeValue: value }),
+  fieldPositionMode: "grid-bottom",
+  setFieldPositionMode: (mode) => set({ fieldPositionMode: mode }),
+  fieldPosition: { x: 0, y: 0, z: 0 },
+  setFieldPosition: (position) => set({ fieldPosition: position }),
   axes: {
     x: { min: -10, max: 10, size: 10, step: 1 },
     y: { min: -10, max: 10, size: 10, step: 1 },

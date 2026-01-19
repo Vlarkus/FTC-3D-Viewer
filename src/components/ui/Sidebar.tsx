@@ -3,6 +3,7 @@ import { ConnectionPanel } from "./ConnectionPanel";
 import { GeometryExplorer } from "./GeometryExplorer";
 import { TrailPanel } from "./TrailPanel";
 import { CameraPanel } from "./CameraPanel";
+import { FieldPanel } from "./FieldPanel";
 import { GridPanel } from "./GridPanel";
 import { RobotSettingsPanel } from "./RobotSettingsPanel";
 import { AddGeometryPanel } from "./AddGeometryPanel";
@@ -161,6 +162,12 @@ export const Sidebar = () => {
                     Camera
                   </div>
                   <CameraPanel />
+                </div>
+                <div className="space-y-3">
+                  <div className="text-[10px] font-bold text-muted-foreground uppercase">
+                    Field
+                  </div>
+                  <FieldPanel />
                 </div>
                 <div className="space-y-3">
                   <div className="text-[10px] font-bold text-muted-foreground uppercase">
