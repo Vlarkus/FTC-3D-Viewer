@@ -15,6 +15,12 @@ export const AddGeometryPanel: React.FC = () => {
         const trimmed = value.trim();
         if (trimmed.length === 0) return 0;
         if (/^\$\d+$/.test(trimmed)) return trimmed;
+        if (
+            /[+\-*/^()$]/.test(trimmed) &&
+            /^[0-9eE+\-*/().\s$^]+$/.test(trimmed)
+        ) {
+            return trimmed;
+        }
         const parsed = Number(trimmed);
         return Number.isFinite(parsed) ? parsed : 0;
     };
@@ -185,7 +191,7 @@ export const AddGeometryPanel: React.FC = () => {
                         ))}
                     </div>
                 )}
-                <p className="text-[10px] text-muted-foreground">Use $1, $2, ... in numeric fields.</p>
+                <p className="text-[10px] text-muted-foreground">Use $1, $2, ... and expressions like $2^2 in numeric fields.</p>
             </div>
 
             {/* Type Specific Forms */}

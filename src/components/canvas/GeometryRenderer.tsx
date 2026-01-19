@@ -106,9 +106,26 @@ const resolveTelemetryValue = (
     telemetrySnapshot: Record<string, any>,
     telemetryKeys: string[]
 ) => {
+    const evalExpression = (expression: string) => {
+        const withRefs = expression.replace(/\$(\d+)/g, (_, rawIndex) => {
+            const index = Number(rawIndex) - 1;
+            const key = telemetryKeys[index];
+            const refValue = key ? Number(telemetrySnapshot[key]) : NaN;
+            return Number.isFinite(refValue) ? String(refValue) : '0';
+        });
+        const prepared = withRefs.replace(/\^/g, '**');
+        if (!/^[0-9eE+\-*/().\s]*$/.test(prepared)) return NaN;
+        try {
+            return Number(Function(`"use strict"; return (${prepared});`)());
+        } catch {
+            return NaN;
+        }
+    };
+
     if (typeof value === 'number' && Number.isFinite(value)) return value;
     if (typeof value === 'string') {
         const trimmed = value.trim();
+        if (!trimmed) return 0;
         const refMatch = trimmed.match(/^\$(\d+)$/);
         if (refMatch) {
             const index = Number(refMatch[1]) - 1;
@@ -116,6 +133,8 @@ const resolveTelemetryValue = (
             const refValue = key ? Number(telemetrySnapshot[key]) : NaN;
             return Number.isFinite(refValue) ? refValue : 0;
         }
+        const evaluated = evalExpression(trimmed);
+        if (Number.isFinite(evaluated)) return evaluated;
         const parsed = Number(trimmed);
         return Number.isFinite(parsed) ? parsed : 0;
     }
@@ -148,14 +167,21 @@ const PointRenderer = ({
 }) => {
     if (!entity.visible) return null;
     const { position, radius = 0.5, shape = 'sphere' } = entity.data;
+    const [isHovered, setIsHovered] = React.useState(false);
+    const setHoveredPoint = useAppStore(state => state.setHoveredPoint);
     const transform = useCoordinateTransform(entity.coordinateSpace);
     const clippingPlanes = useClippingPlanes(!entity.visibleIfOutsideGraph);
-    const finalPos = transform(resolveVector3(position, telemetrySnapshot, telemetryKeys));
+    const resolvedPos = resolveVector3(position, telemetrySnapshot, telemetryKeys);
+    const finalPos = transform(resolvedPos);
 
     const commonProps = {
-        position: new THREE.Vector3(...finalPos),
         args: [radius, 16, 16] as any,
     };
+    React.useEffect(() => {
+        if (isHovered) {
+            setHoveredPoint({ id: entity.id, name: entity.name, coords: resolvedPos });
+        }
+    }, [entity.id, entity.name, isHovered, resolvedPos, setHoveredPoint]);
 
     const material = (
         <meshStandardMaterial
@@ -167,15 +193,47 @@ const PointRenderer = ({
         />
     );
 
-    switch (shape as PointShape) {
-        case 'box':
-            return <Box position={commonProps.position} args={[radius * 2, radius * 2, radius * 2]}>{material}</Box>;
-        case 'cone':
-            return <Cone position={commonProps.position} args={[radius, radius * 2, 16]}>{material}</Cone>;
-        case 'sphere':
-        default:
-            return <Sphere position={commonProps.position} args={[radius, 16, 16]}>{material}</Sphere>;
-    }
+    const handleOver = (event: any) => {
+        event.stopPropagation();
+        setIsHovered(true);
+    };
+    const handleOut = (event: any) => {
+        event.stopPropagation();
+        setIsHovered(false);
+        setHoveredPoint(null);
+    };
+
+    return (
+        <group position={new THREE.Vector3(...finalPos)}>
+            {shape === 'box' && (
+                <Box
+                    args={[radius * 2, radius * 2, radius * 2]}
+                    onPointerOver={handleOver}
+                    onPointerOut={handleOut}
+                >
+                    {material}
+                </Box>
+            )}
+            {shape === 'cone' && (
+                <Cone
+                    args={[radius, radius * 2, 16]}
+                    onPointerOver={handleOver}
+                    onPointerOut={handleOut}
+                >
+                    {material}
+                </Cone>
+            )}
+            {shape === 'sphere' && (
+                <Sphere
+                    args={commonProps.args}
+                    onPointerOver={handleOver}
+                    onPointerOut={handleOut}
+                >
+                    {material}
+                </Sphere>
+            )}
+        </group>
+    );
 };
 
 const LineRenderer = ({
@@ -363,17 +421,35 @@ const ParametricRenderer = ({
 
         let funcX: Function, funcY: Function, funcZ: Function;
 
+        const substituteTelemetryRefs = (input: string) => (
+            input.replace(/\$(\d+)/g, (_, rawIndex) => {
+                const index = Number(rawIndex) - 1;
+                const key = telemetryKeys[index];
+                const refValue = key ? Number(telemetrySnapshot[key]) : NaN;
+                return Number.isFinite(refValue) ? String(refValue) : '0';
+            })
+        );
         const mathRegex = /\b(sin|cos|tan|asin|acos|atan|atan2|pow|exp|log|sqrt|abs|floor|ceil|round|min|max|PI|E|sqrt2)\b/g;
         const prepare = (s: string) => s.replace(mathRegex, 'Math.$1');
+        const insertImplicitMultiplication = (s: string) => {
+            let next = s;
+            next = next.replace(/(\d|\))\s*(?=Math\.|[A-Za-z(])(?![eE][+-]?\d)/g, '$1*');
+            next = next.replace(/([A-Za-z\)])\s*(?=\d|\()/g, '$1*');
+            return next;
+        };
+        const prepareEquation = (s: string) => {
+            const substituted = substituteTelemetryRefs(s).replace(/\^/g, '**');
+            return insertImplicitMultiplication(prepare(substituted));
+        };
 
         if (typeof equation === 'string') {
             funcX = (u: number, _v: number) => u;
             funcY = (_u: number, v: number) => v;
-            funcZ = new Function('x', 'y', `try { return ${prepare(equation)}; } catch(e) { return 0; }`);
+            funcZ = new Function('x', 'y', `try { return ${prepareEquation(equation)}; } catch(e) { return 0; }`);
         } else {
-            funcX = new Function('u', 'v', `try { return ${prepare(equation.x)}; } catch(e) { return 0; }`);
-            funcY = new Function('u', 'v', `try { return ${prepare(equation.y)}; } catch(e) { return 0; }`);
-            funcZ = new Function('u', 'v', `try { return ${prepare(equation.z)}; } catch(e) { return 0; }`);
+            funcX = new Function('u', 'v', `try { return ${prepareEquation(equation.x)}; } catch(e) { return 0; }`);
+            funcY = new Function('u', 'v', `try { return ${prepareEquation(equation.y)}; } catch(e) { return 0; }`);
+            funcZ = new Function('u', 'v', `try { return ${prepareEquation(equation.z)}; } catch(e) { return 0; }`);
         }
 
         for (let i = 0; i <= count; i++) {
@@ -383,8 +459,15 @@ const ParametricRenderer = ({
                 const dx = funcX(u, v);
                 const dy = funcY(u, v);
                 const dz = funcZ(u, v);
-                const [vx, vy, vz] = transform([dx, dy, dz]);
-                positions.push(vx, vy, vz);
+                const safeX = Number.isFinite(dx) ? dx : 0;
+                const safeY = Number.isFinite(dy) ? dy : 0;
+                const safeZ = Number.isFinite(dz) ? dz : 0;
+                const [vx, vy, vz] = transform([safeX, safeY, safeZ]);
+                positions.push(
+                    Number.isFinite(vx) ? vx : 0,
+                    Number.isFinite(vy) ? vy : 0,
+                    Number.isFinite(vz) ? vz : 0
+                );
             }
         }
 

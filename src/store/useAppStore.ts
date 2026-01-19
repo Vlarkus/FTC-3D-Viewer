@@ -145,6 +145,11 @@ interface AppState {
   setTrailSettings: (settings: Partial<AppState["trailSettings"]>) => void;
   clearTrail: () => void;
   trailClearToken: number;
+
+  hoveredPoint: { id: string; name: string; coords: [number, number, number] } | null;
+  setHoveredPoint: (
+    point: { id: string; name: string; coords: [number, number, number] } | null
+  ) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -862,4 +867,7 @@ export const useAppStore = create<AppState>((set) => ({
       trailClearToken: state.trailClearToken + 1,
     })),
   trailClearToken: 0,
+
+  hoveredPoint: null,
+  setHoveredPoint: (point) => set({ hoveredPoint: point }),
 }));

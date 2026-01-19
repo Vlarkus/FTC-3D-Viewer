@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Mesh } from "three";
-import { Html, Line } from "@react-three/drei";
+import { Line } from "@react-three/drei";
 import { telemetryStore } from "../../store/telemetryStore";
 import { useCoordinateMapper } from "../../hooks/useCoordinateMapper";
 import { useAppStore } from "../../store/useAppStore";
@@ -64,15 +64,6 @@ export const Robot = () => {
           <sphereGeometry args={[robotSettings.robotSize, 32, 32]} />
           <meshStandardMaterial color={robotSettings.robotColor} />
 
-          {/* Coordinate Label */}
-          {robotSettings.showCoordinates && (
-            <Html distanceFactor={10} position={[0, 0.4, 0]}>
-              <div className="bg-black/80 text-white px-2 py-1 rounded text-[10px] whitespace-nowrap border border-white/20 font-mono shadow-xl pointer-events-none transition-all">
-                ({state.x.toFixed(1)}, {state.y.toFixed(1)},{" "}
-                {state.z.toFixed(1)})
-              </div>
-            </Html>
-          )}
         </mesh>
       )}
 
